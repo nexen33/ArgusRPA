@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Build outputs
+dist/
+dist-app/
+out/
+build/
+release/
+
+# macOS
+.DS_Store
+*.AppleDouble
+.LSOverride
+
+# IDE and Environment
+.vscode/
+.idea/
+.env
+.env.local
+.env.*.local
+
+# Databases & Runtime Data
+*.sqlite
+*.sqlite3
+*.db
+run_images/
+
+# --- [Argus Core Protection] ---
+# ⚠️ Explicitly ignore proprietary backend engines to prevent accidental push
+src/main/executionEngine.ts
+src/main/browserManager.ts
+src/main/notifier.ts
+src/main/secureStore.ts
