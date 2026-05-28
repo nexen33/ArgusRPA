@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-transparent text-gray-200 antialiased overflow-hidden select-none;
+  }
+
+  input, textarea, [contenteditable] {
+    @apply select-text;
+  }
+
+  /* 自定义全局滚动条 */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(31, 41, 55, 0.2); 
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5); 
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.8); 
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+}

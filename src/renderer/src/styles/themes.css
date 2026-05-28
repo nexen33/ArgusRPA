@@ -1,0 +1,62 @@
+:root {
+  /* Default to dark if no class is present, though we will toggle .theme-dark / .theme-light */
+}
+
+/* Global transitions to prevent flickering */
+body * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.theme-dark {
+  color-scheme: dark;
+  --bg-main: #0f111a;
+  --bg-panel: #1e1e2e;
+  --bg-surface: #111827; /* gray-900 equivalent */
+  --bg-elevated: #1f2937; /* gray-800 equivalent */
+  
+  --border: #374151; /* gray-700 */
+  --border-subtle: #1f2937; /* gray-800 */
+  --border-strong: #4b5563; /* gray-600 */
+  
+  --text-primary: #e5e7eb; /* gray-200 */
+  --text-secondary: #d1d5db; /* gray-300 */
+  --text-muted: #9ca3af; /* gray-400 */
+  --text-faint: #6b7280; /* gray-500 */
+  
+  --accent: #3b82f6; /* blue-500 */
+  --accent-subtle: rgba(59, 130, 246, 0.1);
+  --danger: #ef4444; /* red-500 */
+  --danger-subtle: rgba(239, 68, 68, 0.1);
+  --warning: #f59e0b; /* amber-500 */
+  --warning-subtle: rgba(245, 158, 11, 0.1);
+  --success: #10b981; /* emerald-500 */
+  --success-subtle: rgba(16, 185, 129, 0.1);
+}
+
+.theme-light {
+  color-scheme: light;
+  --bg-main: #f3f4f6; /* gray-100 */
+  --bg-panel: #ffffff; /* white */
+  --bg-surface: #ffffff; /* white */
+  --bg-elevated: #f9fafb; /* gray-50 */
+  
+  --border: #d1d5db; /* gray-300 */
+  --border-subtle: #e5e7eb; /* gray-200 */
+  --border-strong: #9ca3af; /* gray-400 */
+  
+  --text-primary: #111827; /* gray-900 */
+  --text-secondary: #374151; /* gray-700 */
+  --text-muted: #4b5563; /* gray-600 */
+  --text-faint: #6b7280; /* gray-500 */
+  
+  --accent: #2563eb; /* blue-600 */
+  --accent-subtle: rgba(37, 99, 235, 0.1);
+  --danger: #dc2626; /* red-600 */
+  --danger-subtle: rgba(220, 38, 38, 0.1);
+  --warning: #d97706; /* amber-600 */
+  --warning-subtle: rgba(217, 119, 6, 0.1);
+  --success: #059669; /* emerald-600 */
+  --success-subtle: rgba(5, 150, 105, 0.1);
+}
