@@ -1,0 +1,40 @@
+appId: com.argus.desktop
+productName: Argus
+copyright: "Copyright © 2026 Tun & PaMa AG"
+
+directories:
+  output: dist-app
+  buildResources: build
+
+files:
+  - out/**/*
+  - node_modules/**/*
+  - "!node_modules/**/test*"
+  - "!node_modules/**/*.md"
+  - "!node_modules/**/__tests__"
+  - "!src/main/__tests__"
+  - "build/icon.png"
+  - "build/logo.ico"
+  - "build/logo.icns"
+  - "CHANGELOG.md"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/logo.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/logo.ico
+  uninstallerIcon: build/logo.ico
+  shortcutName: Argus
+  include: build/installer.nsh
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  icon: build/logo.icns
