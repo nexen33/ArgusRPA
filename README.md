@@ -5,7 +5,7 @@ _____________________________________________________
 Argus is a lightweight, visually-driven Robotic Process Automation (RPA) tool and web scraper. Designed with a local-first architecture, it enables automated data extraction and workflow execution without requiring complex scripting.
 
 ### 🛠️ Architecture Notice
-The UI rendering layer is built with **React 18 + TailwindCSS + Vite**, while the core relies on **Electron** for cross-platform orchestration.
+The UI rendering layer is built with **React 18 + TailwindCSS + Vite**, while the core relies on **Electron** for cross-platform orchestration.<br>
 *(Note: This repository open-sources the UI architecture and IPC communication skeleton. The underlying RPA execution engine, anti-fingerprint sandbox, and anti-popup algorithms are physically isolated to protect proprietary logic.)*
 
 ### ✨ Core Features
@@ -36,7 +36,7 @@ _____________________________________________________
 Argus 是一款轻量级、视觉驱动的桌面级 RPA 与 网页数据 提取工具。项目采用完全本地化的架构设计，无需编写复杂脚本即可实现自动化的工作流调度。
 
 ### 🛠️ 架构说明
-本项目的 UI 渲染层采用了 **React 18 + TailwindCSS + Vite** 构建，底层基于 **Electron** 实现跨平台调度。
+本项目的 UI 渲染层采用了 **React 18 + TailwindCSS + Vite** 构建，底层基于 **Electron** 实现跨平台调度。<br>
 *(注：为保护核心知识产权，本仓库目前仅开源 UI 架构与渲染层通信骨架。底层 RPA 执行大脑、防指纹沙盒以及反弹窗算法引擎已被物理隔离。)*
 
 ### ✨ 核心功能
