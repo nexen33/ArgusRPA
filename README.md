@@ -18,10 +18,10 @@ The UI rendering layer is built with **React 18 + TailwindCSS + Vite**, while th
 - **Cron Scheduling:** Background task polling with isolated partition cookies for concurrent multi-account execution.
 - **Local Data Privacy:** 100% local SQLite persistence with OS-level encrypted storage for secrets (`safeStorage`). No cloud sync.
 
-### 🚀 Installation (Pending Upload)
+### 🚀 Installation 
 Pre-built binaries for macOS and Windows are available in the [Releases](https://github.com/nexen33/ArgusRPA/releases) page.
-- **macOS:** Download `Argus-v1.2.0.dmg` (Universal build).
-- **Windows:** Download `Argus-v1.2.0.exe`.
+- **macOS:** Download `Argus-v1.2.0.dmg` & `Argus-v1.2.0-arm64.dmg`.
+- **Windows:** Download `Argus Setup 1.2.0.exe`.
 
 ### ⚠️ Disclaimer
 Argus is provided "as-is" for educational and personal workflow automation purposes only. The user assumes all responsibility for adhering to the Terms of Service and `robots.txt` policies of the target websites. The author holds no liability for any misuse, account suspension, or legal disputes arising from the use of this software.
@@ -49,10 +49,10 @@ Argus 是一款轻量级、视觉驱动的桌面级 RPA 与 网页数据 提取�
 - **Cron 调度与沙盒隔离:** 支持细粒度的定时轮询任务，且为每个批次任务分配独立的 Cookie 隔离分区，实现多账号并发免串签。
 - **本地加密存储:** 所有的运行数据与爬取结果均落地至本地 SQLite 数据库，核心 Token 使用系统级 API (`safeStorage`) 进行物理级加密，零云端上传。
 
-### 🚀 下载与安装 （待上传）
+### 🚀 下载与安装 
 请前往 [Releases](https://github.com/nexen33/ArgusRPA/releases) 页面获取编译好的安装包：
-- **macOS:** 下载 `Argus-v1.2.0.dmg`（支持 Intel 与 Apple Silicon 系统）。
-- **Windows:** 下载 `Argus-v1.2.0.exe`。
+- **macOS:** 下载 `Argus-v1.2.0.dmg` 或 `Argus-v1.2.0-arm64.dmg`。
+- **Windows:** 下载 `Argus Setup 1.2.0.exe`。
 
 ### ⚠️ 免责声明 (Disclaimer)
 本软件按“原样”提供，仅供个人学习、技术研究及合法的工作流自动化使用。用户在使用本软件时，必须严格遵守目标网站的《服务条款》(ToS) 及 `robots.txt` 爬虫协议。因滥用本软件（包括但不限于高频抓取、逆向破解等）导致的目标网站服务异常、账号封禁或任何相关法律纠纷，软件开发者不承担任何直接或连带法律责任。
