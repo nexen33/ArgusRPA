@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 // [SECURITY NOTICE] 
-// Core modules (browserManager, ExecutionEngine, Scheduler, secureStore) 
+// Core modules (browserManager, ExecutionEngine, Scheduler, secureStore, uiaManager) 
 // have been physically isolated from this open-source release to protect 
 // the proprietary anti-bot algorithms and task execution strategies.
 
@@ -68,7 +68,7 @@ app.whenReady().then(() => {
 
   // ----------------------------------------------------------------------
   // [REDACTED] Task & Execution Engine API stubs
-  // The actual SQLite persistence and Playwright/Puppeteer automation 
+  // The actual SQLite persistence and Playwright/UIAutomation automation 
   // layers are removed. Returning mock data to satisfy React frontend.
   // ----------------------------------------------------------------------
   
@@ -82,6 +82,14 @@ app.whenReady().then(() => {
     return null
   })
 
+  // [NEW in v1.3.5] Stub for system apps to satisfy new DesktopActionEditor component
+  safeHandle('get-system-apps', () => {
+    return [
+      { name: 'Notepad', executablePath: 'notepad.exe', processName: 'notepad' },
+      { name: 'Calculator', executablePath: 'calc.exe', processName: 'calculator' }
+    ]
+  })
+
   safeHandle('get-theme', () => {
     return 'dark'
   })
@@ -93,7 +101,7 @@ app.whenReady().then(() => {
   // Initialize UI Framework
   createWindow()
 
-  // [REDACTED] Cron Scheduler and Feishu/Slack Notifier initialization omitted
+  // [REDACTED] Cron Scheduler, OpenCV Image Matcher and Feishu/Slack Notifier initialization omitted
 })
 
 app.on('window-all-closed', () => {
