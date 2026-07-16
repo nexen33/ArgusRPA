@@ -7,10 +7,13 @@ const api = {
   setBrowserVisibility: (visible: boolean) => ipcRenderer.send('set-browser-visibility', visible),
   setModalOpen: (isOpen: boolean) => ipcRenderer.send('set-modal-open', isOpen),
   setPickerMode: (enabled: boolean) => ipcRenderer.send('set-picker-mode', enabled),
+  getPickerShortcut: () => ipcRenderer.invoke('get-picker-shortcut'),
+  setPickerShortcut: (shortcut: string) => ipcRenderer.invoke('set-picker-shortcut', shortcut),
   syncMainViewPartition: (url: string) => ipcRenderer.send('sync-main-view-partition', url),
   setActiveTask: (taskId: string | null) => ipcRenderer.send('set-active-task', taskId),
   switchBrowserTab: (tabId: string) => ipcRenderer.send('switch-browser-tab', tabId),
   closeBrowserTab: (tabId: string) => ipcRenderer.send('close-browser-tab', tabId),
+  captureActiveView: () => ipcRenderer.invoke('capture-active-view'),
   
   // Window Controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),
@@ -26,6 +29,7 @@ const api = {
   getAllTasks: () => ipcRenderer.invoke('get-all-tasks'),
   saveTask: (task: any) => ipcRenderer.invoke('save-task', task),
   deleteTask: (id: string) => ipcRenderer.invoke('delete-task', id),
+  updateTasksOrder: (orderedIds: string[]) => ipcRenderer.invoke('update-tasks-order', orderedIds),
   exportTasks: (taskIds: string[]) => ipcRenderer.invoke('export-tasks', taskIds),
   importTasks: () => ipcRenderer.invoke('import-tasks'),
   
@@ -54,10 +58,13 @@ const api = {
   setTheme: (theme: string) => ipcRenderer.invoke('set-theme', theme),
   getHeadlessMode: () => ipcRenderer.invoke('get-headless-mode'),
   setHeadlessMode: (enabled: boolean) => ipcRenderer.invoke('set-headless-mode', enabled),
+  getHardwareAcceleration: () => ipcRenderer.invoke('get-hardware-acceleration'),
+  toggleHardwareAcceleration: (enabled: boolean) => ipcRenderer.invoke('toggle-hardware-acceleration', enabled),
   resetAppData: () => ipcRenderer.invoke('reset-app-data'),
   readChangelog: () => ipcRenderer.invoke('read-changelog'),
   openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
   getVersion: () => ipcRenderer.invoke('get-version'),
+  runEnvDiagnostics: () => ipcRenderer.invoke('run-env-diagnostics'),
   
   getArgusIssuePath: () => ipcRenderer.invoke('get-argus-issue-path'),
   getHasOtherDrives: () => ipcRenderer.invoke('get-has-other-drives'),
@@ -95,6 +102,11 @@ const api = {
     const handler = (_event: any, data: any) => callback(data)
     ipcRenderer.on('element-selected', handler)
     return () => ipcRenderer.removeListener('element-selected', handler)
+  },
+  onTogglePickerModeFromMain: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('toggle-picker-mode-from-main', handler)
+    return () => ipcRenderer.removeListener('toggle-picker-mode-from-main', handler)
   },
   
   onNewBrowserTab: (callback: (data: any) => void) => {

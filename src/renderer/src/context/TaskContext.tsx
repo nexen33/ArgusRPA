@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { ScraperTask } from '../../../shared/types';
-
+import { ScraperTask, ScraperStep } from '../../../shared/types';
 
 interface TaskContextType {
   task: Partial<ScraperTask>;
@@ -18,6 +17,8 @@ interface TaskContextType {
   addVisitedUrl: (url: string) => void;
   pendingStep: any;
   setPendingStep: (step: any) => void;
+  activeDropzone: { parentId: string, branch: 'true' | 'false' } | null;
+  setActiveDropzone: (val: { parentId: string, branch: 'true' | 'false' } | null) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -33,6 +34,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [isDebugMode, setIsDebugMode] = useState(false);
   const [visitedUrls, setVisitedUrls] = useState<string[]>([]);
   const [pendingStep, setPendingStep] = useState<any>(null);
+  const [activeDropzone, setActiveDropzone] = useState<{ parentId: string, branch: 'true' | 'false' } | null>(null);
 
   const addVisitedUrl = (url: string) => {
     setVisitedUrls(prev => {
@@ -47,8 +49,19 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const removeStep = (id: string) => {
     setTask(prev => {
-      const steps = prev.steps?.filter(s => s.id !== id) || [];
-      return { ...prev, steps };
+      const recursiveRemove = (steps: ScraperStep[]): ScraperStep[] => {
+        return steps.filter(s => s.id !== id).map(s => {
+          if (s.type === 'if_else') {
+            return {
+              ...s,
+              trueBranchSteps: s.trueBranchSteps ? recursiveRemove(s.trueBranchSteps) : [],
+              falseBranchSteps: s.falseBranchSteps ? recursiveRemove(s.falseBranchSteps) : []
+            };
+          }
+          return s;
+        });
+      };
+      return { ...prev, steps: recursiveRemove(prev.steps || []) };
     });
   };
 
@@ -67,6 +80,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     setIsDebugMode(false);
     setVisitedUrls([]);
     setPendingStep(null);
+    setActiveDropzone(null);
     
     // @ts-ignore
     if (window.electronAPI && window.electronAPI.navigateBrowser) {
@@ -83,7 +97,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       removeStep,
       isDebugMode, setIsDebugMode,
       visitedUrls, addVisitedUrl,
-      pendingStep, setPendingStep
+      pendingStep, setPendingStep,
+      activeDropzone, setActiveDropzone
     }}>
       {children}
     </TaskContext.Provider>

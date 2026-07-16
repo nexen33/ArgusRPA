@@ -231,7 +231,19 @@ export default function RunStatusBar() {
                 className="text-[10px] px-2 py-0.5 rounded border font-medium"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
               >
-                当前步: {(task.steps?.findIndex(s => s.id === currentStepId) ?? -1) + 1} / {task.steps?.length || 0}
+                当前步: {(() => {
+                  if (!task.steps) return 0;
+                  let idx = task.steps.findIndex(s => s.id === currentStepId);
+                  if (idx === -1) {
+                    idx = task.steps.findIndex(s => 
+                      s.type === 'if_else' && (
+                        (s.trueBranchSteps || []).some(c => c.id === currentStepId) ||
+                        (s.falseBranchSteps || []).some(c => c.id === currentStepId)
+                      )
+                    );
+                  }
+                  return idx + 1;
+                })()} / {task.steps?.length || 0}
               </span>
             )}
           </div>
@@ -244,7 +256,7 @@ export default function RunStatusBar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0 self-start mt-0.5">
+      <div className="flex items-center gap-3 shrink-0">
         {/* Download Progress */}
         {downloadProgress && (
           <div className="flex flex-col items-end justify-center gap-1.5 mr-2 w-48 mt-1">
@@ -263,7 +275,7 @@ export default function RunStatusBar() {
         {status !== 'complete' && status !== 'error' && (
           <button 
             onClick={handleStop}
-            className="border px-4 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1"
+            className="border px-4 py-1.5 rounded-lg font-bold text-sm transition-all flex items-center gap-1"
             style={{ backgroundColor: 'var(--danger-subtle)', borderColor: 'var(--danger)', color: 'var(--danger)' }}
           >
             <Square size={14} style={{ fill: 'currentColor' }} />
@@ -274,7 +286,7 @@ export default function RunStatusBar() {
         {(status === 'complete' || status === 'error') && (
           <button 
             onClick={() => setStatus('idle')}
-            className="px-4 py-1.5 rounded-lg font-bold text-xs transition-all border"
+            className="px-4 py-1.5 rounded-lg font-bold text-sm transition-all border"
             style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', borderColor: 'var(--border-strong)' }}
           >
             返回就绪

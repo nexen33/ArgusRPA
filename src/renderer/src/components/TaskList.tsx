@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { LayoutDashboard, Trash2, Edit, Play, Square, Copy, Download, Upload, Plus } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { LayoutDashboard, Trash2, Edit, Play, Square, Copy, Download, Upload, Plus, GripVertical, Lock, Unlock } from 'lucide-react'
 import { useTask } from '../context/TaskContext'
 import { useModal } from '../context/ModalContext'
 import { ScraperTask } from '../../../shared/types'
@@ -11,8 +11,18 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
   const [activeTasks, setActiveTasks] = useState<Set<string>>(new Set())
   const [isExporting, setIsExporting] = useState(false)
   const [exportSelection, setExportSelection] = useState<Set<string>>(new Set())
+  const [clearConfigsOnExport, setClearConfigsOnExport] = useState(false)
   const [notificationConfigs, setNotificationConfigs] = useState<any[]>([])
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
+  const [isTableScrolled, setIsTableScrolled] = useState(false)
+  const headerScrollRef = useRef<HTMLDivElement>(null)
+  const [isSortLocked, setIsSortLocked] = useState(true)
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    return () => setIsSortLocked(true)
+  }, [])
+
   const [colWidths, setColWidths] = useState(() => {
     const saved = localStorage.getItem('argus-col-widths')
     if (saved) {
@@ -40,14 +50,19 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     e.stopPropagation()
     const startX = e.clientX
     const startWidth = colWidths[col]
+    let rafId: number | null = null
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      setColWidths((prev: any) => ({
-        ...prev,
-        [col]: Math.min(600, Math.max(60, startWidth + (moveEvent.clientX - startX)))
-      }))
+      if (rafId) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(() => {
+        setColWidths((prev: any) => ({
+          ...prev,
+          [col]: Math.min(600, Math.max(60, startWidth + (moveEvent.clientX - startX)))
+        }))
+      })
     }
     const onMouseUp = () => {
+      if (rafId) cancelAnimationFrame(rafId)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
     }
@@ -120,7 +135,6 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     }
 
     fetchTasks()
-    fetchTasks()
   }
 
   const confirmExport = async () => {
@@ -131,7 +145,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     // @ts-ignore
     if (!window.electronAPI || !window.electronAPI.exportTasks) return
     // @ts-ignore
-    const res = await window.electronAPI.exportTasks(Array.from(exportSelection))
+    const res = await window.electronAPI.exportTasks(Array.from(exportSelection), clearConfigsOnExport)
     if (res?.success) {
       modal.toast(`导出成功：${res.filePath}`)
       setIsExporting(false)
@@ -281,6 +295,55 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   }
 
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (isSortLocked) return
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault()
+    if (isSortLocked) return
+    if (dragOverTaskId !== id) {
+      setDragOverTaskId(id)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    // Do not clear dragOverTaskId here to prevent child-element flicker
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOverTaskId(null)
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    setDragOverTaskId(null)
+    if (isSortLocked) return
+    
+    const sourceId = e.dataTransfer.getData('text/plain')
+    if (!sourceId || sourceId === targetId) return
+
+    const sourceIndex = tasks.findIndex(t => t.id === sourceId)
+    const targetIndex = tasks.findIndex(t => t.id === targetId)
+    if (sourceIndex === -1 || targetIndex === -1) return
+
+    const newTasks = [...tasks]
+    const [movedTask] = newTasks.splice(sourceIndex, 1)
+    newTasks.splice(targetIndex, 0, movedTask)
+    
+    setTasks(newTasks)
+    
+    // @ts-ignore
+    if (window.electronAPI && window.electronAPI.updateTasksOrder) {
+      // @ts-ignore
+      await window.electronAPI.updateTasksOrder(newTasks.map(t => t.id))
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-darkBg h-full overflow-hidden">
       <style>{`
@@ -298,6 +361,17 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
           animation: fadeInLeftList 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
           opacity: 0;
         }
+        .invisible-scrollbar::-webkit-scrollbar {
+          width: 3px;
+          height: 3px;
+          background: transparent;
+        }
+        .invisible-scrollbar::-webkit-scrollbar-thumb {
+          background: transparent;
+        }
+        .invisible-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
       `}</style>
       <div className="pr-3 pt-6 pb-4 flex items-center justify-between" style={{ paddingLeft: '32px', WebkitAppRegion: 'drag' } as any}>
         <div>
@@ -308,6 +382,17 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
           <p className="text-gray-500 text-sm mt-1">管理您所有的自动化爬虫编排任务</p>
         </div>
         <div className="flex gap-2 relative z-10" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          <button
+            onClick={() => setIsSortLocked(!isSortLocked)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 border ${
+              isSortLocked 
+                ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/20' 
+                : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/20'
+            } mr-2`}
+          >
+            {isSortLocked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
+            {isSortLocked ? '排序锁定' : '排序解锁'}
+          </button>
           <button
             onClick={() => {
               setExportSelection(new Set(tasks.map(t => t.id)))
@@ -343,65 +428,116 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
           </button>
           <button
             onClick={() => onNavigate('configurator')}
-            className="flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 ml-2"
+            className="flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary dark:text-white border border-primary/30 dark:border-slate-500/60 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 ml-2"
           >
             <Plus size={16} strokeWidth={3} /> 创建新任务
           </button>
         </div>
       </div>
 
-      <div className="flex-1 bg-darkPanel rounded-xl border border-gray-800 overflow-hidden shadow-2xl flex flex-col mx-3 mb-6 min-h-0">
-        <div className="overflow-y-auto overflow-x-auto thin-scrollbar flex-1 min-h-0">
-          <table className="w-full text-left border-collapse table-fixed">
-            <thead>
-              <tr className="bg-gray-900 border-b border-gray-800 text-sm text-gray-300 font-bold uppercase tracking-wider select-none">
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.name }}>
-                  <div className="px-4 py-4 overflow-hidden whitespace-nowrap">任务名称</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('name', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.steps }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">操作步骤数</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('steps', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.batch }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">批量状态</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('batch', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.schedule }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">定时状态</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('schedule', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.notify }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">通知状态</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('notify', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.monitor }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">运行监控</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('monitor', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.created }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">创建日期</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('created', e)} />
-                </th>
-                <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group" style={{ width: colWidths.run }}>
-                  <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">上次运行时间</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('run', e)} />
-                </th>
-                <th className="p-0 align-top relative group" style={{ width: colWidths.actions }}>
-                  <div className="px-4 py-4 text-center overflow-hidden whitespace-nowrap">操作</div>
-                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('actions', e)} />
-                </th>
-              </tr>
-            </thead>
+      <div className="flex-1 bg-darkPanel rounded-xl border border-gray-800 overflow-hidden shadow-2xl flex flex-col mx-3 mb-6 min-h-0 relative">
+        {/* Header container */}
+        <div className={`flex-none z-20 bg-gray-900 transition-shadow duration-300 ${isTableScrolled ? 'shadow-[0_2px_10px_rgba(0,0,0,0.25)]' : ''}`}>
+          <div className="overflow-x-hidden overflow-y-scroll invisible-scrollbar" ref={headerScrollRef}>
+            <table className="w-full text-left border-collapse table-fixed" style={{ minWidth: Math.max((Object.values(colWidths) as number[]).reduce((a, b) => a + b, 0), 1000) + 'px' }}>
+              <colgroup>
+                <col style={{ width: colWidths.name }} />
+                <col style={{ width: colWidths.steps }} />
+                <col style={{ width: colWidths.batch }} />
+                <col style={{ width: colWidths.schedule }} />
+                <col style={{ width: colWidths.notify }} />
+                <col style={{ width: colWidths.monitor }} />
+                <col style={{ width: colWidths.created }} />
+                <col style={{ width: colWidths.run }} />
+                <col style={{ width: colWidths.actions }} />
+              </colgroup>
+              <thead>
+                <tr className="bg-gray-900 border-b border-gray-800 text-sm text-gray-300 font-bold uppercase tracking-wider select-none">
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-4 py-4 overflow-hidden whitespace-nowrap">任务名称</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('name', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">操作步骤数</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('steps', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">批量状态</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('batch', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">定时状态</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('schedule', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">通知状态</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('notify', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">运行监控</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('monitor', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">创建日期</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('created', e)} />
+                  </th>
+                  <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
+                    <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">上次运行时间</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('run', e)} />
+                  </th>
+                  <th className="p-0 align-top relative group">
+                    <div className="px-4 py-4 text-center overflow-hidden whitespace-nowrap">操作</div>
+                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('actions', e)} />
+                  </th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+        </div>
+
+        {/* Body container */}
+        <div 
+          className="overflow-y-auto overflow-x-auto thin-scrollbar flex-1 min-h-0"
+          onScroll={(e) => {
+            const isScrolled = e.currentTarget.scrollTop > 0;
+            if (isTableScrolled !== isScrolled) {
+              setIsTableScrolled(isScrolled);
+            }
+            if (headerScrollRef.current && headerScrollRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
+              headerScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+            }
+          }}
+        >
+          <table className="w-full text-left border-collapse table-fixed" style={{ minWidth: Math.max((Object.values(colWidths) as number[]).reduce((a, b) => a + b, 0), 1000) + 'px' }}>
+            <colgroup>
+              <col style={{ width: colWidths.name }} />
+              <col style={{ width: colWidths.steps }} />
+              <col style={{ width: colWidths.batch }} />
+              <col style={{ width: colWidths.schedule }} />
+              <col style={{ width: colWidths.notify }} />
+              <col style={{ width: colWidths.monitor }} />
+              <col style={{ width: colWidths.created }} />
+              <col style={{ width: colWidths.run }} />
+              <col style={{ width: colWidths.actions }} />
+            </colgroup>
             <tbody>
               {tasks.map((t, index) => (
                 <tr 
                   key={t.id} 
-                  className={`border-b border-gray-800 transition-colors group animate-fade-in-left-list ${highlightedTaskId === t.id ? 'bg-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'hover:bg-gray-800/30'}`}
+                  draggable={!isSortLocked}
+                  onDragStart={(e) => handleDragStart(e, t.id)}
+                  onDragOver={(e) => handleDragOver(e, t.id)}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  onDrop={(e) => handleDrop(e, t.id)}
+                  className={`border-b border-gray-800 transition-colors group animate-fade-in-left-list ${highlightedTaskId === t.id ? 'bg-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'hover:bg-gray-800/30'} ${dragOverTaskId === t.id ? 'bg-primary/20 relative z-10 shadow-[inset_0_2px_0_0_#6366f1,inset_0_-2px_0_0_#6366f1]' : ''} ${!isSortLocked ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   style={{ animationDelay: `${Math.min(index * 30, 800)}ms` }}
                 >
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
+                      {!isSortLocked && (
+                        <GripVertical size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      )}
                       <button
                         onMouseDown={() => handleMouseDown(t)}
                         onMouseUp={() => handleMouseUp(t)}
@@ -573,6 +709,19 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                   >
                     全不选
                   </button>
+                  <label 
+                    className="text-xs px-2 py-1 rounded border transition-colors cursor-pointer flex items-center gap-1.5 hover:opacity-80 group"
+                    style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      className="w-3 h-3 rounded"
+                      checked={clearConfigsOnExport}
+                      onChange={(e) => setClearConfigsOnExport(e.target.checked)}
+                      style={{ accentColor: 'var(--accent)' }}
+                    />
+                    <span>去除Slack/飞书配置</span>
+                  </label>
                 </div>
               </div>
               <button onClick={() => setIsExporting(false)} className="transition-colors hover:opacity-80" style={{ color: 'var(--text-muted)' }}>

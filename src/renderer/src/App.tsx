@@ -8,7 +8,7 @@ import WindowControls from './components/WindowControls'
 import NotificationPage from './components/NotificationPage'
 import MonitorPanel from './components/MonitorPanel'
 import SettingsPage from './components/SettingsPage'
-
+import ErrorBoundary from './components/ErrorBoundary'
 import { useTask } from './context/TaskContext'
 
 function App() {
@@ -70,18 +70,20 @@ function App() {
         <div className="flex-1 flex flex-col relative overflow-hidden">
           <LoginStatusBar />
           <div key={activePage} className="flex-1 overflow-hidden flex flex-col animate-in fade-in zoom-in-[0.98] duration-300 fill-mode-both">
-          {activePage === 'configurator' ? (
-            <TaskConfigurator />
-          ) : activePage === 'tasks' ? (
-            <TaskList onNavigate={setActivePage} />
-          ) : activePage === 'notifications' ? (
-            <NotificationPage />
-          ) : activePage === 'monitor' ? (
-            <MonitorPanel />
-          ) : (
-            <SettingsPage />
-          )}
-        </div>
+            <ErrorBoundary>
+              {activePage === 'configurator' ? (
+                <TaskConfigurator />
+              ) : activePage === 'tasks' ? (
+                <TaskList onNavigate={setActivePage} />
+              ) : activePage === 'notifications' ? (
+                <NotificationPage />
+              ) : activePage === 'monitor' ? (
+                <MonitorPanel />
+              ) : (
+                <SettingsPage />
+              )}
+            </ErrorBoundary>
+          </div>
       </div>
 
       {globalError && (

@@ -32,6 +32,9 @@ export default function NotificationPage() {
   const [testResult, setTestResult] = useState('')
   const [isTesting, setIsTesting] = useState(false)
 
+  // Cursor Tracking State
+  const [cursorState, setCursorState] = useState<{ field: 'template' | 'summaryTemplate' | 'localTemplate', start: number, end: number } | null>(null);
+
   // Variables Helper
   const [availableVars, setAvailableVars] = useState<string[]>([])
 
@@ -77,7 +80,8 @@ export default function NotificationPage() {
     vars.add('_SYS_CURRENT_TIME_')
     vars.add('_SYS_CURRENT_DATE_')
     vars.add('_SYS_CURRENT_DATETIME_')
-    vars.add('teiltask_name')
+    vars.add('multi_parameter_name')
+    vars.add('_SYS_SKIPPED_POPUPS_')
     
     setAvailableVars(Array.from(vars))
   }
@@ -265,6 +269,38 @@ export default function NotificationPage() {
     setFeishuKeywords(newArr.join(','));
   }
 
+  const handleTextareaCursor = (e: React.SyntheticEvent<HTMLTextAreaElement>, field: 'template' | 'summaryTemplate' | 'localTemplate') => {
+    const target = e.target as HTMLTextAreaElement;
+    setCursorState({ field, start: target.selectionStart, end: target.selectionEnd });
+  }
+
+  const handleVariableClick = (v: string) => {
+    const textToInsert = `{{${v}}}`;
+    navigator.clipboard.writeText(textToInsert);
+    
+    if (cursorState && editingConfig) {
+      const field = cursorState.field;
+      let currentValue = editingConfig[field] || '';
+      if (field === 'localTemplate' && editingConfig.localTemplate === undefined) {
+         currentValue = '[聚光提示] 任务执行完毕\n摘要: {{#each rows}} {{SellerId}}: {{Progress}} {{/each}}';
+      }
+      
+      const newValue = currentValue.substring(0, cursorState.start) + textToInsert + currentValue.substring(cursorState.end);
+      setEditingConfig({ ...editingConfig, [field]: newValue });
+      
+      // Update cursor position so they can keep clicking to insert consecutively
+      setCursorState({
+        field,
+        start: cursorState.start + textToInsert.length,
+        end: cursorState.start + textToInsert.length
+      });
+      
+      modal.toast(`已复制并键入: ${textToInsert}`);
+    } else {
+      modal.toast(`已复制: ${textToInsert}`);
+    }
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-darkBg h-full overflow-hidden">
       <div className="pr-3 pt-6 pb-4 shrink-0 flex items-center justify-between" style={{ paddingLeft: '32px', WebkitAppRegion: 'drag' } as any}>
@@ -410,57 +446,59 @@ export default function NotificationPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <label className="text-xs text-gray-400 font-bold">推送目标配置</label>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-6">
-                      <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                        <input type="checkbox" checked={editingConfig.platform?.includes('feishuLark')} onChange={() => togglePlatform('feishuLark')} className="accent-primary" /> 飞书/Lark
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                          <input type="checkbox" checked={editingConfig.platform?.includes('slack')} onChange={() => togglePlatform('slack')} className="accent-primary" /> Slack
-                        </label>
-                        {editingConfig.platform?.includes('slack') && (
-                          <span className="text-xs text-gray-500 ml-2">（采用全局默认配置）</span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                          <input type="checkbox" checked={editingConfig.platform?.includes('local')} onChange={() => togglePlatform('local')} className="accent-primary" /> 本机系统通知
-                        </label>
-                      </div>
-                    </div>
-
-                    {editingConfig.platform?.includes('feishuLark') && (
-                      <div className="flex items-center gap-2">
-                        <input type="text" value={editingConfig.feishuWebhookUrl || ''} onChange={e => setEditingConfig({ ...editingConfig, feishuWebhookUrl: e.target.value })} className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none" placeholder="输入飞书/Lark Webhook URL" />
-                        <button
-                          onClick={() => {
-                            if (editingConfig.feishuWebhookUrl === feishuWebhook && feishuWebhook) {
-                              setEditingConfig({ ...editingConfig, feishuWebhookUrl: '' })
-                            } else if (feishuWebhook) {
-                              setEditingConfig({ ...editingConfig, feishuWebhookUrl: feishuWebhook })
-                            }
-                          }}
-                          className={`px-3 h-[37px] flex items-center justify-center text-xs font-bold rounded-xl border transition-colors shrink-0 ${editingConfig.feishuWebhookUrl === feishuWebhook && feishuWebhook ? 'bg-primary text-white border-primary' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}
-                          title={feishuWebhook ? '点击使用全局配置的 Webhook' : '请先在左侧配置全局 Webhook'}
-                        >
-                          使用全局默认
-                        </button>
-                      </div>
-                    )}
-
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 font-bold">批量任务发送模式</label>
+                    <select value={editingConfig.batchMode} onChange={e => setEditingConfig({ ...editingConfig, batchMode: e.target.value as 'each' | 'summary' })} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none appearance-none" style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 7l5 5 5-5'/%3e%3c/svg%3e")`, backgroundPosition: 'right 8px center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em 1.2em', paddingRight: '32px' }}>
+                      <option value="each">逐条发送 (每个结果发一条消息)</option>
+                      <option value="summary">汇总发送 (将所有结果汇总成一条大消息)</option>
+                    </select>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs text-gray-400 font-bold">批量任务发送模式</label>
-                  <select value={editingConfig.batchMode} onChange={e => setEditingConfig({ ...editingConfig, batchMode: e.target.value as 'each' | 'summary' })} className="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none">
-                    <option value="each">逐条发送 (每个结果发一条消息)</option>
-                    <option value="summary">汇总发送 (将所有结果汇总成一条大消息)</option>
-                  </select>
+                  <div className="space-y-4">
+                    <label className="text-xs text-gray-400 font-bold">推送目标配置</label>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-6">
+                        <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                          <input type="checkbox" checked={editingConfig.platform?.includes('feishuLark')} onChange={() => togglePlatform('feishuLark')} className="accent-primary" /> 飞书/Lark
+                        </label>
+                        <div className="flex items-center">
+                          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <input type="checkbox" checked={editingConfig.platform?.includes('slack')} onChange={() => togglePlatform('slack')} className="accent-primary" /> Slack
+                          </label>
+                          {editingConfig.platform?.includes('slack') && (
+                            <span className="text-xs text-gray-500 ml-0.5 relative top-[0.5px]">（全局配置）</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <input type="checkbox" checked={editingConfig.platform?.includes('local')} onChange={() => togglePlatform('local')} className="accent-primary" /> 本机系统通知
+                          </label>
+                        </div>
+                      </div>
+
+                      {editingConfig.platform?.includes('feishuLark') && (
+                        <div className="flex items-center gap-2">
+                          <input type="text" value={editingConfig.feishuWebhookUrl || ''} onChange={e => setEditingConfig({ ...editingConfig, feishuWebhookUrl: e.target.value })} className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none" placeholder="输入飞书/Lark Webhook URL" />
+                          <button
+                            onClick={() => {
+                              if (editingConfig.feishuWebhookUrl === feishuWebhook && feishuWebhook) {
+                                setEditingConfig({ ...editingConfig, feishuWebhookUrl: '' })
+                              } else if (feishuWebhook) {
+                                setEditingConfig({ ...editingConfig, feishuWebhookUrl: feishuWebhook })
+                              }
+                            }}
+                            className={`px-3 h-[37px] flex items-center justify-center text-xs font-bold rounded-xl border transition-colors shrink-0 ${editingConfig.feishuWebhookUrl === feishuWebhook && feishuWebhook ? 'bg-primary text-white border-primary' : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'}`}
+                            title={feishuWebhook ? '点击使用全局配置的 Webhook' : '请先在左侧配置全局 Webhook'}
+                          >
+                            使用全局默认
+                          </button>
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-4">
@@ -469,6 +507,9 @@ export default function NotificationPage() {
                     <textarea
                       value={editingConfig.template}
                       onChange={e => setEditingConfig({ ...editingConfig, template: e.target.value })}
+                      onSelect={e => handleTextareaCursor(e, 'template')}
+                      onClick={e => handleTextareaCursor(e, 'template')}
+                      onKeyUp={e => handleTextareaCursor(e, 'template')}
                       className="w-full h-32 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none font-mono resize-none"
                       placeholder="抓取成功！结果：{{variable1}}"
                     />
@@ -479,6 +520,9 @@ export default function NotificationPage() {
                       <textarea
                         value={editingConfig.summaryTemplate || ''}
                         onChange={e => setEditingConfig({ ...editingConfig, summaryTemplate: e.target.value })}
+                        onSelect={e => handleTextareaCursor(e, 'summaryTemplate')}
+                        onClick={e => handleTextareaCursor(e, 'summaryTemplate')}
+                        onKeyUp={e => handleTextareaCursor(e, 'summaryTemplate')}
                         className="w-full h-32 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none font-mono resize-none"
                         placeholder={'汇总报告：\n{{#each rows}}\n- 账号: {{account}}\n{{/each}}'}
                       />
@@ -492,23 +536,26 @@ export default function NotificationPage() {
                     <textarea
                       value={editingConfig.localTemplate !== undefined ? editingConfig.localTemplate : '[聚光提示] 任务执行完毕\n摘要: {{#each rows}} {{SellerId}}: {{Progress}} {{/each}}'}
                       onChange={e => setEditingConfig({ ...editingConfig, localTemplate: e.target.value })}
+                      onSelect={e => handleTextareaCursor(e, 'localTemplate')}
+                      onClick={e => handleTextareaCursor(e, 'localTemplate')}
+                      onKeyUp={e => handleTextareaCursor(e, 'localTemplate')}
                       className="w-full h-24 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:border-primary outline-none font-mono resize-none"
                     />
                   </div>
                 )}
 
                 {availableVars.length > 0 && (
-                  <div className="p-3 rounded-lg border border-gray-700" style={{ backgroundColor: 'rgba(128, 128, 128, 0.1)' }}>
+                  <div className="p-3 rounded-lg border border-gray-700 w-full" style={{ backgroundColor: 'rgba(128, 128, 128, 0.1)' }}>
                     <span className="text-xs text-gray-500 font-bold mr-2">任务中出现的输出变量 (点击复制):</span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {availableVars.map(v => (
+                    <div className="flex flex-wrap gap-2 mt-2 w-full">
+                      {[
+                        ...availableVars.filter(v => v.startsWith('_SYS_') || v === 'multi_parameter_name'),
+                        ...availableVars.filter(v => !v.startsWith('_SYS_') && v !== 'multi_parameter_name')
+                      ].map(v => (
                         <span 
                           key={v} 
-                          onClick={() => {
-                            navigator.clipboard.writeText(`{{${v}}}`);
-                            modal.toast(`已复制变量: {{${v}}}`);
-                          }}
-                          title="点击复制到剪贴板"
+                          onClick={() => handleVariableClick(v)}
+                          title="点击复制并键入到光标处"
                           className="px-2 py-1 bg-gray-900 hover:bg-gray-800 cursor-pointer border border-transparent hover:border-gray-600 text-gray-300 text-xs rounded-xl font-mono select-none transition-colors active:bg-gray-700"
                         >
                           {`{{${v}}}`}

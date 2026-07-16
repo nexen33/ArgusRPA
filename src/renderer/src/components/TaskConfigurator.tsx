@@ -3,6 +3,8 @@ import BrowserPlaceholder from './BrowserPlaceholder'
 import StepsList from './StepsList'
 import ParamsPanel from './ParamsPanel'
 import { useTask } from '../context/TaskContext'
+import ShortcutSettingsModal from './ShortcutSettingsModal'
+import { Settings } from 'lucide-react'
 
 import RunStatusBar from './RunStatusBar'
 
@@ -15,6 +17,88 @@ export default function TaskConfigurator() {
     { id: 'main', url: task.targetUrl || '', title: 'Main Tab' }
   ])
   const [activeTabId, setActiveTabId] = React.useState('main')
+
+  const defaultPanelsWidth = 762; // 375 + 375 + 12 (gap)
+  const minPanelsWidth = 450;
+  const [panelsWidth, setPanelsWidth] = React.useState<number>(defaultPanelsWidth);
+  const isCollapsed = panelsWidth === minPanelsWidth;
+
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = React.useState(false);
+  const [contextMenuPos, setContextMenuPos] = React.useState<{x: number, y: number} | null>(null);
+  const [pickerShortcut, setPickerShortcut] = React.useState<string>('');
+  const [snapshotUri, setSnapshotUri] = React.useState<string | null>(null);
+  const cachedSnapshotPromiseRef = React.useRef<Promise<string | null> | null>(null);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const shadowScrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    // @ts-ignore
+    if (window.electronAPI) {
+      // @ts-ignore
+      window.electronAPI.getPickerShortcut().then(res => {
+        setPickerShortcut(res?.success ? res.data : (res || ''));
+      });
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const handleGlobalClick = () => setContextMenuPos(null);
+    if (contextMenuPos) {
+      window.addEventListener('click', handleGlobalClick);
+    }
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, [contextMenuPos]);
+
+  // Hide native WebContentsView when modal is open to avoid Z-index overlaps
+  React.useEffect(() => {
+    const isOverlayOpen = !!contextMenuPos || isShortcutModalOpen;
+    // @ts-ignore
+    if (window.electronAPI?.setModalOpen) {
+      if (isOverlayOpen) {
+        if (cachedSnapshotPromiseRef.current) {
+          cachedSnapshotPromiseRef.current.then(uri => {
+            if (uri) setSnapshotUri(uri);
+            // @ts-ignore
+            window.electronAPI.setModalOpen(true);
+          });
+        } else {
+          // @ts-ignore
+          if (window.electronAPI.captureActiveView) {
+            // @ts-ignore
+            window.electronAPI.captureActiveView().then(uri => {
+              if (uri) setSnapshotUri(uri);
+              // @ts-ignore
+              window.electronAPI.setModalOpen(true);
+            });
+          } else {
+            // @ts-ignore
+            window.electronAPI.setModalOpen(true);
+          }
+        }
+      } else {
+        // @ts-ignore
+        window.electronAPI.setModalOpen(false);
+        setSnapshotUri(null);
+        cachedSnapshotPromiseRef.current = null;
+      }
+    }
+  }, [contextMenuPos, isShortcutModalOpen]);
+
+  React.useEffect(() => {
+    const main = scrollRef.current;
+    const shadow = shadowScrollRef.current;
+    if (!main || !shadow) return;
+    const onScroll = () => {
+      shadow.scrollLeft = main.scrollLeft;
+    };
+    main.addEventListener('scroll', onScroll, { passive: true });
+    return () => main.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const togglePanelsWidth = () => {
+    setPanelsWidth(isCollapsed ? defaultPanelsWidth : minPanelsWidth);
+  };
 
   React.useEffect(() => {
     // Sync main tab URL if task.targetUrl changes externally
@@ -46,10 +130,18 @@ export default function TaskConfigurator() {
     // @ts-ignore
     const removeTitleUpdated = window.electronAPI.onBrowserTitleUpdated(onTitleUpdated)
 
+    // 监听主进程的快捷键触发选择器模式
+    const handleToggleFromMain = () => {
+      window.dispatchEvent(new CustomEvent('toggle-picker-mode'))
+    }
+    // @ts-ignore
+    const removeToggleFromMain = window.electronAPI.onTogglePickerModeFromMain && window.electronAPI.onTogglePickerModeFromMain(handleToggleFromMain)
+
     return () => {
       if (removeNewTab) removeNewTab()
       if (removeNavigated) removeNavigated()
       if (removeTitleUpdated) removeTitleUpdated()
+      if (removeToggleFromMain) removeToggleFromMain()
     }
   }, [])
 
@@ -59,12 +151,43 @@ export default function TaskConfigurator() {
       // @ts-ignore
       window.electronAPI.setActiveTask(task.id)
     }
+    
+    // Reset tabs when switching to a new task to clear old titles
+    setTabs([{ id: 'main', url: task.targetUrl || '', title: 'Main Tab' }])
+    setActiveTabId('main')
+
     return () => {
       // @ts-ignore
       if (window.electronAPI) window.electronAPI.setActiveTask(null)
     }
   }, [task.id])
 
+  React.useEffect(() => {
+    const handleToggle = () => {
+      const next = !isPickerMode;
+      setIsPickerMode(next);
+      // @ts-ignore
+      if (window.electronAPI) window.electronAPI.setPickerMode(next);
+    };
+
+    // Listen to custom DOM event (from button click)
+    window.addEventListener('toggle-picker-mode', handleToggle as EventListener);
+    
+    // Listen to IPC event (from global shortcut in main process)
+    let removeIpcListener: (() => void) | undefined;
+    // @ts-ignore
+    if (window.electronAPI?.onTogglePickerModeFromMain) {
+      // @ts-ignore
+      removeIpcListener = window.electronAPI.onTogglePickerModeFromMain(() => {
+        handleToggle();
+      });
+    }
+
+    return () => {
+      window.removeEventListener('toggle-picker-mode', handleToggle as EventListener);
+      if (removeIpcListener) removeIpcListener();
+    };
+  }, [isPickerMode, setIsPickerMode]);
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0]
   const currentInputUrl = activeTab?.url || ''
 
@@ -114,7 +237,7 @@ export default function TaskConfigurator() {
         <RunStatusBar />
       </div>
       
-      <div className="flex-1 flex p-3 gap-3 min-h-0">
+      <div className="flex-1 flex p-3 gap-2 min-h-0">
         {/* Left Column: Browser (Flexible Width) */}
       <div className="flex-1 min-w-[400px] h-full flex flex-col bg-darkPanel rounded-xl border border-gray-800 overflow-hidden shadow-2xl relative">
         {/* 配置模式高亮边缘提示 */}
@@ -204,11 +327,30 @@ export default function TaskConfigurator() {
           
           <button 
             onClick={togglePickerMode}
+            onMouseEnter={() => {
+              // Pre-capture screenshot on hover to eliminate right-click lag
+              // @ts-ignore
+              if (window.electronAPI?.captureActiveView && !cachedSnapshotPromiseRef.current) {
+                // @ts-ignore
+                cachedSnapshotPromiseRef.current = window.electronAPI.captureActiveView();
+              }
+            }}
+            onMouseLeave={() => {
+              // Only clear cache if menu isn't open
+              if (!contextMenuPos && !isShortcutModalOpen) {
+                cachedSnapshotPromiseRef.current = null;
+              }
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenuPos({ x: e.clientX, y: e.clientY });
+            }}
             className={`px-3 py-1 text-xs font-medium rounded-full transition-all flex items-center gap-1.5 border border-transparent ${
               isPickerMode 
                 ? 'bg-primary text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)]' 
                 : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-[var(--text-primary)] border-gray-200 dark:border-gray-700'
             }`}
+            title={`右键设置快捷键 (${pickerShortcut})`}
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
@@ -218,17 +360,133 @@ export default function TaskConfigurator() {
         </div>
         <div className="flex-1 relative">
           <BrowserPlaceholder />
+          {snapshotUri && (
+            <div 
+              className="absolute inset-0 z-[10] bg-cover bg-no-repeat pointer-events-none"
+              style={{ 
+                backgroundImage: `url(${snapshotUri})`,
+                backgroundPosition: 'left top',
+                animation: 'blurFadeIn 0.15s ease-out forwards'
+              }}
+            />
+          )}
+        </div>
+      </div>
+      
+      {/* Context Menu for Picker Shortcut */}
+      {contextMenuPos && (
+        <div 
+          className="fixed z-[9999] bg-darkPanel border border-gray-700 rounded-md shadow-xl overflow-hidden py-0.5 min-w-[100px]"
+          style={{ left: contextMenuPos.x, top: contextMenuPos.y }}
+        >
+          <button 
+            onClick={() => {
+              setContextMenuPos(null);
+              setIsShortcutModalOpen(true);
+            }}
+            className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-white/5 transition-colors flex items-center gap-1.5"
+          >
+            <Settings size={12} className="text-gray-400" /> 快捷键设置
+          </button>
+        </div>
+      )}
+
+      {/* Shortcut Settings Modal */}
+      <ShortcutSettingsModal 
+        isOpen={isShortcutModalOpen} 
+        onClose={() => setIsShortcutModalOpen(false)} 
+        initialShortcut={pickerShortcut}
+        onSave={(newShortcut) => {
+          setPickerShortcut(newShortcut);
+          // @ts-ignore
+          if (window.electronAPI) window.electronAPI.setPickerShortcut(newShortcut);
+        }}
+      />
+
+      {/* Dragger Handle */}
+      <div 
+        className="w-0 flex flex-col items-center justify-center shrink-0 z-10 relative"
+      >
+        <div 
+          className="absolute w-4 h-full cursor-pointer flex items-center justify-center group"
+          onClick={togglePanelsWidth}
+          title={isCollapsed ? "展开面板恢复" : "收缩面板腾出浏览器空间"}
+        >
+          <div className="w-[4px] group-hover:w-[16px] h-12 group-hover:h-16 bg-gray-400 dark:bg-primary rounded-full opacity-60 group-hover:opacity-100 transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] flex items-center justify-center overflow-hidden dark:shadow-[0_0_6px_rgba(59,130,246,0.5)]">
+             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-white flex items-center justify-center">
+                {isCollapsed ? (
+                  <svg className="w-3 h-3 translate-x-[-0.5px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+                ) : (
+                  <svg className="w-3 h-3 translate-x-[1px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                )}
+             </div>
+          </div>
         </div>
       </div>
 
-      {/* Middle Column: Params Panel */}
-      <div className="w-[360px] shrink-0 h-full bg-darkPanel rounded-xl border border-gray-800 px-2 pt-3 pb-2 shadow-xl">
-        <ParamsPanel />
-      </div>
+      {/* Middle & Right Column Wrapper */}
+      <div 
+        className="relative shrink-0 h-full transition-all"
+        style={{ width: `${panelsWidth}px` }}
+      >
+        {/* SHADOW LAYER (Absolute, behind main, taller and wider to prevent shadow clipping) */}
+        <div 
+          ref={shadowScrollRef}
+          className="absolute top-0 overflow-hidden pointer-events-none z-0"
+          style={{ 
+            left: '-30px',
+            right: '-30px',
+            paddingLeft: '30px',
+            paddingRight: '30px',
+            bottom: '-30px', 
+            paddingBottom: '30px',
+            WebkitMaskImage: panelsWidth < 762 
+              ? 'linear-gradient(to right, black 0%, black calc(100% - 54px), transparent calc(100% - 30px), transparent 100%)' 
+              : 'none'
+          }}
+        >
+          <div className="flex gap-3 h-full w-max">
+            {/* Fake panels just to cast independent shadows */}
+            <div className="w-[375px] shrink-0 h-full rounded-xl shadow-xl bg-transparent"></div>
+            <div className="w-[375px] shrink-0 h-full rounded-xl shadow-xl bg-transparent"></div>
+          </div>
+        </div>
 
-      {/* Right Column: Steps List */}
-      <div className="w-[360px] shrink-0 h-full bg-darkPanel rounded-xl border border-gray-800 px-3 pt-4 pb-3 shadow-xl">
-        <StepsList />
+        {/* MAIN FOREGROUND LAYER (Scrolling, perfect rounded corners, no shadows) */}
+        <div 
+          ref={scrollRef}
+          className="relative flex gap-3 h-full w-full overflow-x-auto thin-scrollbar overflow-y-hidden rounded-xl transform-gpu will-change-scroll z-10"
+        >
+          {/* Middle Column: Params Panel */}
+          <div className="w-[375px] shrink-0 h-full bg-darkPanel rounded-xl border border-gray-800 px-2 pt-3 pb-2 transform-gpu">
+            <ParamsPanel />
+          </div>
+
+          {/* Right Column: Steps List */}
+          <div className="w-[375px] shrink-0 h-full bg-darkPanel rounded-xl border border-gray-800 px-3 pt-4 pb-3 transform-gpu">
+            <StepsList />
+          </div>
+        </div>
+
+        {/* Collapsed State Right Edge Glow Indicator (Pure Contoured Aura) */}
+        <div 
+          className={`absolute pointer-events-none transition-opacity duration-700 z-20 ${
+            isCollapsed ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            top: '-30px', bottom: '-30px', left: '-30px', right: '-30px',
+            WebkitMaskImage: 'linear-gradient(to right, transparent 0%, transparent calc(100% - 58px), black calc(100% - 42px), black 100%)'
+          }}
+        >
+          <div 
+            className="absolute rounded-xl animate-pulse"
+            style={{
+              top: '30px', bottom: '31px', left: '30px', right: '30px',
+              animationDuration: '3s',
+              boxShadow: '0 0 20px 4px rgba(59,130,246,0.35), 0 0 8px 1px rgba(59,130,246,0.5)'
+            }}
+          />
+        </div>
       </div>
     </div>
     </div>

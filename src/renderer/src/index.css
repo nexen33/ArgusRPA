@@ -32,4 +32,16 @@
     width: 3px;
     height: 3px;
   }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes blurFadeIn {
+  0% {
+    filter: blur(0px) brightness(1);
+  }
+  100% {
+    filter: blur(8px) brightness(0.7);
+  }
 }
