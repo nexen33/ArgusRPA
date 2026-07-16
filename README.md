@@ -20,8 +20,8 @@ The UI rendering layer is built with **React 18 + TailwindCSS + Vite**, while th
 
 ### 🚀 Installation 
 Pre-built binaries for macOS and Windows are available in the [Releases](https://github.com/nexen33/ArgusRPA/releases) page.
-- **macOS:** Download `Argus-v1.2.5.dmg` & `Argus-v1.2.5-arm64.dmg`.
-- **Windows:** Download `Argus Setup 1.2.5.exe`.
+- **macOS:** Download `Argus-v1.3.5.dmg` & `Argus-v1.3.5-arm64.dmg`.
+- **Windows:** Download `Argus Setup 1.3.53.exe`.
 
 ### ⚠️ Disclaimer
 Argus is provided "as-is" for educational and personal workflow automation purposes only. The user assumes all responsibility for adhering to the Terms of Service and `robots.txt` policies of the target websites. The author holds no liability for any misuse, account suspension, or legal disputes arising from the use of this software.
@@ -51,8 +51,8 @@ Argus 是一款轻量级、视觉驱动的桌面级 RPA 与 网页数据 提取�
 
 ### 🚀 下载与安装 
 请前往 [Releases](https://github.com/nexen33/ArgusRPA/releases) 页面获取编译好的安装包：
-- **macOS:** 下载 `Argus-v1.2.5.dmg` 或 `Argus-v1.2.5-arm64.dmg`。
-- **Windows:** 下载 `Argus Setup 1.2.5.exe`。
+- **macOS:** 下载 `Argus-v1.3.5.dmg` 或 `Argus-v1.3.5-arm64.dmg`。
+- **Windows:** 下载 `Argus Setup 1.3.53.exe`。
 
 ### ⚠️ 免责声明 (Disclaimer)
 本软件按“原样”提供，仅供个人学习、技术研究及合法的工作流自动化使用。用户在使用本软件时，必须严格遵守目标网站的《服务条款》(ToS) 及 `robots.txt` 爬虫协议。因滥用本软件（包括但不限于高频抓取、逆向破解等）导致的目标网站服务异常、账号封禁或任何相关法律纠纷，软件开发者不承担任何直接或连带法律责任。
