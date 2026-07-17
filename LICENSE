@@ -1,0 +1,42 @@
+Argus RPA 最终用户许可协议与开源仓库声明
+Argus RPA End User License Agreement (EULA) & Repository License
+Copyright © 2026 Tun & PaMa AG. All Rights Reserved.
+
+【IMPORTANT NOTICE FOR GITHUB REPOSITORY / 仓库重要声明】
+本仓库包含 Argus RPA 架构的部分前端与通信骨架代码。本仓库公开的源代码仅供个人评估（7天试用）及代码审计使用。未经购买有效授权密钥，严禁对本源码或其编译生成的二进制程序进行任何形式的复制、修改、分发或商业化使用。
+This repository contains a limited subset of the Argus RPA architecture. The source code published in this repository is provided STRICTLY for personal, non-commercial evaluation (7-day trial) and educational/auditing purposes. Any unauthorized reproduction, modification, distribution, or commercial use of this source code or the associated pre-built binaries is strictly prohibited without a valid purchased license.
+
+【TRIAL AND PRO LICENSE MECHANISM / 试用与商业授权机制】
+本软件在 v1.6.5 版本之上实行 7 天全功能试用机制。试用期结束后，软件将自动切换为不可操作的锁定状态。如需恢复使用并解锁全部功能，用户必须购买合法的 Pro 版本授权密钥。
+This software operates on a 7-day fully functional trial mechanism above v1.6.5. Upon expiration of the trial period, the software will automatically lock. To resume usage and unlock all features, the user must purchase a valid Pro license key.
+
+通过安装本软件或克隆本仓库，即表示您同意受以下最终用户许可协议的约束：
+By installing the software or cloning this repository, you agree to be bound by the following End User License Agreement (EULA):
+
+====================================================================
+      Argus RPA 最终用户许可协议 (End User License Agreement)
+====================================================================
+
+【重要须知 / IMPORTANT】
+请您仔细阅读以下条款。当您继续安装本软件，即表示您同意受本协议约束。如果您不同意本协议的任何条款，请勿安装或使用本软件。
+Please read the following terms carefully. By continuing to install the Software, you agree to be bound by this Agreement. If you do not agree to any of the terms, do not install or use the Software.
+
+1. 授权范围 (License Grant)
+我们授予您一项非排他性、不可转让的有限许可，允许您在您的个人或企业设备上安装并使用 Argus RPA 软件（以下简称“本软件”）。
+We hereby grant you a non-exclusive, non-transferable, limited license to install and use Argus RPA (hereinafter referred to as "the Software") on your personal or corporate devices.
+
+2. 自动化抓取与合规性声明 (Automation & Compliance)
+本软件仅作为中立的技术辅助工具。用户使用本软件执行任何自动化脚本、网络请求、数据抓取或操作时，必须遵守目标网站的服务条款（Terms of Service）、Robots 协议及所在国家和地区的相关法律法规。您承诺不会利用本软件进行非法数据盗取、恶意攻击（如 DDoS）或对目标服务器造成过大负荷。任何因违规操作引发的法律纠纷，均由用户自行承担，开发者对此不承担任何责任。
+The Software is provided strictly as a neutral technical utility. When utilizing the Software for automated scripts, network requests, or data scraping, users MUST comply with the target website's Terms of Service, the Robots Exclusion Protocol, and applicable laws in their respective jurisdictions. You agree not to use the Software for illegal data harvesting, malicious attacks (e.g., DDoS), or causing excessive loads on target servers. The user assumes full legal responsibility for any disputes arising from prohibited activities; the developers disclaim all liability.
+
+3. 账号与数据安全 (Account & Data Security)
+本软件运行过程中涉及的所有配置文件、用户凭证 (Cookies/Tokens)、及抓取所得的数据，均保存在您的本地计算机上。我们不会将您的私密数据上传至任何第三方服务器。请妥善保管您的设备，因本地设备被黑、遗失或使用者误操作导致的数据泄露，开发者概不负责。
+All configuration files, user credentials (Cookies/Tokens), and scraped data handled during the operation of the Software are stored locally on your device. We do not upload your private data to any third-party servers. Please secure your device properly. The developers shall not be held liable for any data breaches resulting from device compromises, loss, or user negligence.
+
+4. 软件所有权 (Ownership)
+本软件及所有相关的知识产权（包括但不限于源代码、UI 设计、操作逻辑）均归开发者所有。禁止对本软件进行逆向工程、反编译、破解或未经授权的二次分发。
+The Software and all associated intellectual property rights (including but not limited to source code, UI design, and operational logic) are owned by the developers. Reverse engineering, decompiling, cracking, or unauthorized redistribution of the Software is strictly prohibited.
+
+5. 免责条款 (Limitation of Liability)
+本软件按“现状 (AS IS)”提供，不作任何明示或暗示的保证。对于因使用或无法使用本软件而导致的任何直接、间接、特殊的利润损失或业务中断，开发者不承担赔偿责任。
+The Software is provided "AS IS" without warranties of any kind, express or implied. Under no circumstances shall the developers be liable for any direct, indirect, special damages, loss of profits, or business interruption arising out of the use or inability to use the Software.
