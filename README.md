@@ -1,8 +1,9 @@
 <h1 align="center">Argus RPA</h1>
-_____________________________________________________
 
-### 🔑 Unlock Pro Version / 获取完整授权
-Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pro version!
+---
+
+### 🔑 Unlock Pro Version / 获取完整授权<br/>
+Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pro version!<br/>
 如果您觉得对应 Trial 的7天试用版好用的话，欢迎支持独立开发者，继续获取授权密钥以继续使用 Pro 版本！
 
 <div align="center">
@@ -23,9 +24,12 @@ Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pr
 > License keys are bound to your hardware ID. Please leave your **[Hardware ID]** in the checkout notes. Keys will be delivered manually via Direct Message / Email within 24 hours.<br/>
 > 授权密钥与您的机器码绑定。付款时请务必在订单备注中留下您的 **[机器码]**。您会在 24 小时内通过提供的可用渠道收到您的专属密钥。
 
-_____________________________________________________
+---
+
 *[🇨🇳 简体中文 (Simplified Chinese) 请向下滚动浏览]*
-_____________________________________________________
+
+---
+
 Argus is a lightweight, visually-driven Robotic Process Automation (RPA) tool and web scraper. Designed with a local-first architecture, it enables automated data extraction and workflow execution without requiring complex scripting.
 
 ### 🛠️ Architecture Notice
@@ -57,8 +61,7 @@ Pre-built binaries for macOS and Windows are available in the [Releases](https:/
 Argus is provided "as-is" for educational and personal workflow automation purposes only. The user assumes all responsibility for adhering to the Terms of Service and `robots.txt` policies of the target websites. The author holds no liability for any misuse, account suspension, or legal disputes arising from the use of this software.
 
 ---
----
-_____________________________________________________
+
 # 🇨🇳 简体中文介绍
 
 <h1 align="center">Argus RPA</h1>
@@ -92,7 +95,9 @@ Argus 是一款轻量级、视觉驱动的桌面级 RPA 与 网页数据 提取�
 
 ### ⚠️ 免责声明 (Disclaimer)
 本软件按“原样”提供，仅供个人学习、技术研究及合法的工作流自动化使用。用户在使用本软件时，必须严格遵守目标网站的《服务条款》(ToS) 及 `robots.txt` 爬虫协议。因滥用本软件（包括但不限于高频抓取、逆向破解等）导致的目标网站服务异常、账号封禁或任何相关法律纠纷，软件开发者不承担任何直接或连带法律责任。
-_____________________________________________________
+
+---
+
 <p align="center">
   <img width="7550" height="2160" alt="Image" src="https://github.com/user-attachments/assets/af46f871-6df4-4b43-b1b4-863f9b6dce31" />
 </p>
