@@ -1,5 +1,6 @@
 <h1 align="center">Argus RPA</h1>
 _____________________________________________________
+
 ### 🔑 Unlock Pro Version / 获取完整授权
 Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pro version!
 如果您觉得对应 Trial 的7天试用版好用的话，欢迎支持独立开发者，继续获取授权密钥以继续使用 Pro 版本！
@@ -7,20 +8,21 @@ Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pr
 <div align="center">
   <!-- Buy Me a Coffee (Global Users) -->
   <a href="https://buymeacoffee.com/tunpama/extras" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 181px !important;" >
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 25px !important;width: 90px !important;" >
   </a>
   &nbsp;&nbsp;&nbsp;&nbsp;
   <!-- Afdian (Mainland China Users) -->
   <a href="https://ifdian.net/a/argus" target="_blank">
-    <img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="去爱发电赞助" style="height: 50px !important;width: 181px !important;">
+    <img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="去爱发电赞助" style="height: 25px !important;width: 90px !important;">
   </a>
 </div>
 
 <br/>
 
-> ⚠️ **IMPORTANT / 购买须知**：
-> License keys are bound to your hardware ID. Please leave your **[Hardware ID]** in the checkout notes. Keys will be delivered manually via Direct Message / Email within 24 hours.
+> ⚠️ **IMPORTANT / 购买须知**：<br/>
+> License keys are bound to your hardware ID. Please leave your **[Hardware ID]** in the checkout notes. Keys will be delivered manually via Direct Message / Email within 24 hours.<br/>
 > 授权密钥与您的机器码绑定。付款时请务必在订单备注中留下您的 **[机器码]**。您会在 24 小时内通过提供的可用渠道收到您的专属密钥。
+
 _____________________________________________________
 *[🇨🇳 简体中文 (Simplified Chinese) 请向下滚动浏览]*
 _____________________________________________________
