@@ -1,31 +1,43 @@
 import React, { useState, useEffect } from 'react'
 import { ActionEditorProps } from './types'
+import { ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react'
 
-function SmartXPathSelector({ currentStep, updateCurrentStep }: { currentStep: any, updateCurrentStep: any }) {
-  const [originalXPath, setOriginalXPath] = useState<string | undefined>(currentStep.selectorXPath);
-  const [selectedOption, setSelectedOption] = useState<string>('none');
-
-  useEffect(() => {
-    setOriginalXPath(currentStep.selectorXPath);
-    setSelectedOption('none');
-  }, [currentStep.id]);
-
-  useEffect(() => {
-    if (selectedOption !== 'none' && currentStep.selectorXPath !== selectedOption) {
-      setSelectedOption('none');
-      setOriginalXPath(currentStep.selectorXPath);
-    }
-  }, [currentStep.selectorXPath]);
-
+export function SmartXPathSelector({ currentStep, updateCurrentStep }: { currentStep: any, updateCurrentStep: any }) {
   const text = currentStep.innerText?.trim() || '';
-  if (!text) return null;
 
   const options = [
     { label: '不替换 (保留原始 XPath)', value: 'none' },
     { label: `//span[contains(text(), "${text}")]`, value: `//span[contains(text(), "${text}")]` },
     { label: `//div[contains(text(), "${text}")]`, value: `//div[contains(text(), "${text}")]` },
     { label: `//*[contains(text(), "${text}")]/.. (向上寻找父容器)`, value: `//*[contains(text(), "${text}")]/..` },
+    { label: `//*[text()="${text}"] (全标签精准等值匹配)`, value: `//*[text()="${text}"]` },
+    { label: `//button[text()="${text}"] (精准匹配按钮)`, value: `//button[text()="${text}"]` },
+    { label: `//a[text()="${text}"] (精准匹配超链接)`, value: `//a[text()="${text}"]` },
+    { label: `//*[text()="${text}"]/parent::* (精准匹配后寻址父容器)`, value: `//*[text()="${text}"]/parent::*` },
   ];
+
+  const [originalXPath, setOriginalXPath] = useState<string | undefined>(currentStep.selectorXPath);
+  const [selectedOption, setSelectedOption] = useState<string>(() => {
+    return options.some(o => o.value !== 'none' && o.value === currentStep.selectorXPath) 
+      ? currentStep.selectorXPath 
+      : 'none';
+  });
+
+  useEffect(() => {
+    const matched = options.some(o => o.value !== 'none' && o.value === currentStep.selectorXPath);
+    setOriginalXPath(currentStep.selectorXPath);
+    setSelectedOption(matched ? currentStep.selectorXPath : 'none');
+  }, [currentStep.id]);
+
+  useEffect(() => {
+    if (selectedOption !== 'none' && currentStep.selectorXPath !== selectedOption) {
+      const matched = options.some(o => o.value !== 'none' && o.value === currentStep.selectorXPath);
+      setSelectedOption(matched ? currentStep.selectorXPath : 'none');
+      setOriginalXPath(currentStep.selectorXPath);
+    }
+  }, [currentStep.selectorXPath]);
+
+  if (!text) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -57,37 +69,89 @@ function SmartXPathSelector({ currentStep, updateCurrentStep }: { currentStep: a
 }
 
 export default function DomActionEditor({ currentStep, updateCurrentStep, renderVarLabel }: ActionEditorProps) {
+  const [clickValidationExpanded, setClickValidationExpanded] = useState(false)
+  const [downloadAdvancedExpanded, setDownloadAdvancedExpanded] = useState(false)
+
   return (
     <>
       {currentStep.type === 'click' && (
-        <div className="flex flex-col gap-1.5 mt-1.5">
+        <div className="flex flex-col gap-1.5">
           <label className="flex items-start gap-2 bg-gray-900 text-xs text-gray-300 px-2.5 py-2 rounded-lg outline-none border border-gray-700 cursor-pointer hover:border-gray-500 transition-colors select-none">
             <input
               type="checkbox"
               checked={!!currentStep.smartParentClick}
               onChange={e => {
-                const isChecked = e.target.checked;
-                let newSelector = currentStep.selector || '';
-                if (isChecked && newSelector) {
-                  newSelector = newSelector.replace(/\s*>\s*(svg|path|img|rect|circle).*$/i, '');
-                  newSelector = newSelector.replace(/\s+(svg|path|img|rect|circle).*$/i, '');
-                }
-                updateCurrentStep({
-                  smartParentClick: isChecked,
-                  ...(isChecked && newSelector !== currentStep.selector ? { selector: newSelector } : {})
-                });
+                updateCurrentStep({ smartParentClick: e.target.checked });
               }}
               className="mt-0.5 rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5 shrink-0"
             />
             <div className="flex flex-col">
-              <span className="font-bold text-gray-200">针对 CSS 的智能穿透点击</span>
+              <span className="font-bold text-gray-200">智能穿透点击</span>
               <span className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                过滤 CSS 最内层的 svg/path/img 标签，解决点击无响应
+                过滤双路内层的 svg/path/img 等标签，解决点击无响应
               </span>
             </div>
           </label>
 
           <SmartXPathSelector currentStep={currentStep} updateCurrentStep={updateCurrentStep} />
+
+          {/* 更多步骤校验设置 (可折叠) */}
+          <div className="border border-gray-700 rounded-lg bg-gray-800/50 mt-1 overflow-hidden transition-all duration-300 ease-in-out">
+            <button
+              onClick={() => setClickValidationExpanded(!clickValidationExpanded)}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-700/50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                {clickValidationExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                更多步骤校验设置
+              </div>
+              {currentStep.validationConfig?.enabled && !clickValidationExpanded && (
+                <ShieldCheck size={14} className="text-blue-400" />
+              )}
+            </button>
+            <div 
+              className="transition-all duration-300 ease-in-out"
+              style={{ maxHeight: clickValidationExpanded ? '500px' : '0', opacity: clickValidationExpanded ? 1 : 0 }}
+            >
+              <div className="p-3 pt-0 flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  {renderVarLabel("执行前校验元素文本是否包含 (可选)", "expectedText", "expected-text-field")}
+                  <input
+                    id="expected-text-field"
+                    className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full"
+                    value={currentStep.expectedText || ''}
+                    onChange={e => updateCurrentStep({ expectedText: e.target.value })}
+                    placeholder="例如：请选择 (若不包含则抛错)"
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-gray-700/50">
+                  <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={currentStep.validationConfig?.enabled !== false}
+                      onChange={e => {
+                        const current = currentStep.validationConfig || {};
+                        updateCurrentStep({ validationConfig: { ...current, enabled: e.target.checked } });
+                      }}
+                      className="mt-0.5 rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5 shrink-0"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-bold text-gray-200">智能网络响应保护</span>
+                      <span className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                        若录制了关联接口，执行后将自动等待接口返回，提升稳定性。
+                      </span>
+                    </div>
+                  </label>
+                  {currentStep.validationConfig?.expectedUrlPattern && (
+                    <div className="text-[10px] text-blue-400/80 bg-blue-900/20 px-2 py-1 rounded border border-blue-800/30 font-mono break-all mt-1">
+                      已配置核验: {currentStep.validationConfig.expectedUrlPattern}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -101,6 +165,30 @@ export default function DomActionEditor({ currentStep, updateCurrentStep, render
             onChange={e => updateCurrentStep({ value: e.target.value })}
             placeholder="要输入的值"
           />
+          <div className="flex flex-col gap-1.5 p-2.5 mt-1 bg-gray-800/50 rounded-lg border border-gray-700">
+            <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={currentStep.validationConfig?.enabled !== false}
+                onChange={e => {
+                  const current = currentStep.validationConfig || {};
+                  updateCurrentStep({ validationConfig: { ...current, enabled: e.target.checked } });
+                }}
+                className="mt-0.5 rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5 shrink-0"
+              />
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-200">智能网络响应保护</span>
+                <span className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                  若录制了关联接口，执行后将自动等待接口返回。
+                </span>
+              </div>
+            </label>
+            {currentStep.validationConfig?.expectedUrlPattern && (
+              <div className="text-[10px] text-blue-400/80 bg-blue-900/20 px-2 py-1 rounded border border-blue-800/30 font-mono break-all mt-1">
+                已配置核验: {currentStep.validationConfig.expectedUrlPattern}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -116,29 +204,57 @@ export default function DomActionEditor({ currentStep, updateCurrentStep, render
             />
             <span>移动鼠标后顺便截图 (存至 run_images)</span>
           </label>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] text-gray-500 font-medium">到达后维持 (步)</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="1"
-                className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-24"
-                value={currentStep.waitDuration === undefined ? 0 : currentStep.waitDuration}
-                onChange={e => {
-                  if (e.target.value === '') {
-                    updateCurrentStep({ waitDuration: '' as any });
-                    return;
-                  }
-                  let val = parseInt(e.target.value, 10);
-                  if (isNaN(val)) val = 0;
-                  if (val < 0) val = 0;
-                  if (val > 10) val = 10;
-                  updateCurrentStep({ waitDuration: val });
-                }}
-              />
-              <span className="text-[12px] text-gray-400">后续步数 (0 ~ 10)</span>
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] text-gray-500 font-medium">到达后维持 (步)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="1"
+                  className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-24"
+                  value={currentStep.waitDuration === undefined ? 0 : currentStep.waitDuration}
+                  onChange={e => {
+                    if (e.target.value === '') {
+                      updateCurrentStep({ waitDuration: '' as any });
+                      return;
+                    }
+                    let val = parseInt(e.target.value, 10);
+                    if (isNaN(val)) val = 0;
+                    if (val < 0) val = 0;
+                    if (val > 10) val = 10;
+                    updateCurrentStep({ waitDuration: val });
+                  }}
+                />
+                <span className="text-[12px] text-gray-400">后续步数 (0 ~ 10)</span>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] text-gray-500 font-medium">爬取机制</label>
+              <div className="relative flex bg-gray-900 border border-gray-700 rounded-lg p-0.5 select-none items-center w-[124px] h-[30px]">
+                {/* Sliding Background */}
+                <div 
+                  className="absolute bg-blue-600 rounded-md shadow-sm transition-all duration-300 ease-out"
+                  style={{ 
+                    top: '2px', bottom: '2px', left: '2px', width: 'calc(50% - 2px)',
+                    transform: (!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'translateX(0)' : 'translateX(100%)'
+                  }}
+                />
+                <div
+                  onClick={() => updateCurrentStep({ clickMode: 'cdp' })}
+                  className={`relative z-10 flex-1 flex items-center justify-center text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  物理CDP
+                </div>
+                <div
+                  onClick={() => updateCurrentStep({ clickMode: 'dom' })}
+                  className={`relative z-10 flex-1 flex items-center justify-center text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(currentStep.clickMode === 'dom') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                >
+                  代码DOM
+                </div>
+              </div>
             </div>
           </div>
         </div>

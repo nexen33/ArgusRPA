@@ -9,6 +9,8 @@ const api = {
   setPickerMode: (enabled: boolean) => ipcRenderer.send('set-picker-mode', enabled),
   getPickerShortcut: () => ipcRenderer.invoke('get-picker-shortcut'),
   setPickerShortcut: (shortcut: string) => ipcRenderer.invoke('set-picker-shortcut', shortcut),
+  getPickConfirmShortcut: () => ipcRenderer.invoke('get-pick-confirm-shortcut'),
+  setPickConfirmShortcut: (shortcut: string) => ipcRenderer.invoke('set-pick-confirm-shortcut', shortcut),
   syncMainViewPartition: (url: string) => ipcRenderer.send('sync-main-view-partition', url),
   setActiveTask: (taskId: string | null) => ipcRenderer.send('set-active-task', taskId),
   switchBrowserTab: (tabId: string) => ipcRenderer.send('switch-browser-tab', tabId),
@@ -23,7 +25,7 @@ const api = {
   // Session & Login APIs
   checkSession: (url: string, cookieName: string) => ipcRenderer.invoke('check-session', { url, cookieName }),
   clearSession: (url: string) => ipcRenderer.invoke('clear-session', url),
-  triggerLogin: (config: any) => ipcRenderer.send('trigger-login', config),
+  triggerLogin: (config: any) => ipcRenderer.invoke('trigger-login', config),
   
   // Tasks
   getAllTasks: () => ipcRenderer.invoke('get-all-tasks'),
@@ -38,9 +40,16 @@ const api = {
   stopTask: () => ipcRenderer.invoke('stop-task'),
   forceClearActiveTask: (taskId: string) => ipcRenderer.invoke('force-clear-active-task', taskId),
   stepContinue: () => ipcRenderer.invoke('step-continue'),
+  testSingleStep: (step: any, taskId?: string) => ipcRenderer.invoke('test-single-step', step, taskId),
 
   // Notifications (Global)
   getNotificationConfig: () => ipcRenderer.invoke('get-notification-config'),
+  onRunStatusChanged: (callback: any) => ipcRenderer.on('run-status-changed', (_, data) => callback(data)),
+  onValidationRecorded: (callback: any) => {
+    const fn = (_: any, data: any) => callback(data);
+    ipcRenderer.on('validation-recorded', fn);
+    return () => ipcRenderer.removeListener('validation-recorded', fn);
+  },
   saveNotificationConfig: (config: any) => ipcRenderer.invoke('save-notification-config', config),
   testSlackConnection: () => ipcRenderer.invoke('test-slack-connection'),
   testFeishuConnection: () => ipcRenderer.invoke('test-feishu-connection'),
@@ -73,6 +82,7 @@ const api = {
   getLicenseChecked: () => ipcRenderer.invoke('get-license-checked'),
   setLicenseChecked: () => ipcRenderer.invoke('set-license-checked'),
   injectDefaultLicenseConfigs: () => ipcRenderer.invoke('inject-default-license-configs'),
+  getLicenseInfo: () => ipcRenderer.invoke('get-license-info'),
 
   // Monitor Panel (Phase 9)
   getMonitorRecords: (taskId?: string) => ipcRenderer.invoke('get-monitor-records', taskId),
@@ -123,6 +133,16 @@ const api = {
     const handler = (_event: any, data: any) => callback(data)
     ipcRenderer.on('browser-title-updated', handler)
     return () => ipcRenderer.removeListener('browser-title-updated', handler)
+  },
+  onBrowserNavigationStarted: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('browser-navigation-started', handler)
+    return () => ipcRenderer.removeListener('browser-navigation-started', handler)
+  },
+  onBrowserLoadFailed: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('browser-load-failed', handler)
+    return () => ipcRenderer.removeListener('browser-load-failed', handler)
   },
   
   // Execution Engine Events

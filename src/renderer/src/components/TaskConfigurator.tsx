@@ -3,6 +3,7 @@ import BrowserPlaceholder from './BrowserPlaceholder'
 import StepsList from './StepsList'
 import ParamsPanel from './ParamsPanel'
 import { useTask } from '../context/TaskContext'
+import { useModal } from '../context/ModalContext'
 import ShortcutSettingsModal from './ShortcutSettingsModal'
 import { Settings } from 'lucide-react'
 
@@ -12,11 +13,13 @@ type Tab = { id: string, url: string, title: string }
 
 export default function TaskConfigurator() {
   const { task, updateTask, isPickerMode, setIsPickerMode, addVisitedUrl } = useTask()
+  const modal = useModal()
 
   const [tabs, setTabs] = React.useState<Tab[]>([
     { id: 'main', url: task.targetUrl || '', title: 'Main Tab' }
   ])
   const [activeTabId, setActiveTabId] = React.useState('main')
+  const [loadError, setLoadError] = React.useState<string | null>(null)
 
   const defaultPanelsWidth = 762; // 375 + 375 + 12 (gap)
   const minPanelsWidth = 450;
@@ -26,6 +29,7 @@ export default function TaskConfigurator() {
   const [isShortcutModalOpen, setIsShortcutModalOpen] = React.useState(false);
   const [contextMenuPos, setContextMenuPos] = React.useState<{x: number, y: number} | null>(null);
   const [pickerShortcut, setPickerShortcut] = React.useState<string>('');
+  const [pickConfirmShortcut, setPickConfirmShortcut] = React.useState<string>('');
   const [snapshotUri, setSnapshotUri] = React.useState<string | null>(null);
   const cachedSnapshotPromiseRef = React.useRef<Promise<string | null> | null>(null);
 
@@ -36,9 +40,16 @@ export default function TaskConfigurator() {
     // @ts-ignore
     if (window.electronAPI) {
       // @ts-ignore
-      window.electronAPI.getPickerShortcut().then(res => {
+      window.electronAPI.getPickerShortcut().then((res: any) => {
         setPickerShortcut(res?.success ? res.data : (res || ''));
       });
+      // @ts-ignore
+      if (window.electronAPI.getPickConfirmShortcut) {
+        // @ts-ignore
+        window.electronAPI.getPickConfirmShortcut().then((res: any) => {
+          setPickConfirmShortcut(res?.success ? res.data : (res || ''));
+        });
+      }
     }
   }, []);
 
@@ -123,12 +134,24 @@ export default function TaskConfigurator() {
       setTabs(prev => prev.map(t => t.id === data.tabId ? { ...t, title: data.title } : t))
     }
 
+    const onNavigationStarted = (data: { tabId: string, url: string }) => {
+      setLoadError(null)
+    }
+
+    const onLoadFailed = (data: { tabId: string, url: string, errorDescription: string }) => {
+      setLoadError(`网页加载失败 或 可能已为空 (${data.errorDescription})`)
+    }
+
     // @ts-ignore
     const removeNewTab = window.electronAPI.onNewBrowserTab(onNewTab)
     // @ts-ignore
     const removeNavigated = window.electronAPI.onBrowserNavigated(onNavigated)
     // @ts-ignore
     const removeTitleUpdated = window.electronAPI.onBrowserTitleUpdated(onTitleUpdated)
+    // @ts-ignore
+    const removeNavigationStarted = window.electronAPI.onBrowserNavigationStarted ? window.electronAPI.onBrowserNavigationStarted(onNavigationStarted) : undefined
+    // @ts-ignore
+    const removeLoadFailed = window.electronAPI.onBrowserLoadFailed ? window.electronAPI.onBrowserLoadFailed(onLoadFailed) : undefined
 
     // 监听主进程的快捷键触发选择器模式
     const handleToggleFromMain = () => {
@@ -141,6 +164,8 @@ export default function TaskConfigurator() {
       if (removeNewTab) removeNewTab()
       if (removeNavigated) removeNavigated()
       if (removeTitleUpdated) removeTitleUpdated()
+      if (removeNavigationStarted) removeNavigationStarted()
+      if (removeLoadFailed) removeLoadFailed()
       if (removeToggleFromMain) removeToggleFromMain()
     }
   }, [])
@@ -156,18 +181,36 @@ export default function TaskConfigurator() {
     setTabs([{ id: 'main', url: task.targetUrl || '', title: 'Main Tab' }])
     setActiveTabId('main')
 
+    // @ts-ignore
+    const removeValidationListener = window.electronAPI?.onValidationRecorded?.((data: any) => {
+      if (data.taskId === task.id) {
+        const stepIndex = (task.steps || []).findIndex(s => s.id === data.stepId);
+        if (stepIndex >= 0) {
+          modal.toast(`第 ${stepIndex + 1} 步 网络请求补录成功，重新测试可获得更稳定结果`);
+          const newSteps = (task.steps || []).map(s => {
+            if (s.id === data.stepId) {
+              return { ...s, validationConfig: { enabled: true, expectedUrlPattern: data.pattern, recordedMethod: data.recordedMethod || 'GET' }};
+            }
+            return s;
+          });
+          updateTask({ steps: newSteps });
+        }
+      }
+    });
+
     return () => {
       // @ts-ignore
       if (window.electronAPI) window.electronAPI.setActiveTask(null)
+      if (removeValidationListener) removeValidationListener();
     }
-  }, [task.id])
+  }, [task.id, task.steps])
 
   React.useEffect(() => {
     const handleToggle = () => {
       const next = !isPickerMode;
       setIsPickerMode(next);
       // @ts-ignore
-      if (window.electronAPI) window.electronAPI.setPickerMode(next);
+      if (window.electronAPI) window.electronAPI.setPickerMode(next, pickConfirmShortcut);
     };
 
     // Listen to custom DOM event (from button click)
@@ -187,7 +230,7 @@ export default function TaskConfigurator() {
       window.removeEventListener('toggle-picker-mode', handleToggle as EventListener);
       if (removeIpcListener) removeIpcListener();
     };
-  }, [isPickerMode, setIsPickerMode]);
+  }, [isPickerMode, setIsPickerMode, pickConfirmShortcut]);
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0]
   const currentInputUrl = activeTab?.url || ''
 
@@ -228,12 +271,12 @@ export default function TaskConfigurator() {
     const newState = !isPickerMode
     setIsPickerMode(newState)
     // @ts-ignore
-    window.electronAPI.setPickerMode(newState)
+    window.electronAPI.setPickerMode(newState, pickConfirmShortcut)
   }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <div className="px-3 pt-3">
+      <div className="px-3 pt-3 flex flex-col gap-2">
         <RunStatusBar />
       </div>
       
@@ -359,6 +402,24 @@ export default function TaskConfigurator() {
           </button>
         </div>
         <div className="flex-1 relative">
+          {loadError && (
+            <div className="absolute top-0 left-0 right-0 z-40 bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center justify-center backdrop-blur-sm shadow-sm animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-2 text-red-500 dark:text-red-400 text-xs font-medium">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="truncate">{loadError}</span>
+                <button 
+                  onClick={() => setLoadError(null)} 
+                  className="ml-2 hover:bg-red-500/20 rounded p-0.5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
           <BrowserPlaceholder />
           {snapshotUri && (
             <div 
@@ -395,11 +456,18 @@ export default function TaskConfigurator() {
       <ShortcutSettingsModal 
         isOpen={isShortcutModalOpen} 
         onClose={() => setIsShortcutModalOpen(false)} 
-        initialShortcut={pickerShortcut}
-        onSave={(newShortcut) => {
-          setPickerShortcut(newShortcut);
+        initialToggleShortcut={pickerShortcut}
+        initialConfirmShortcut={pickConfirmShortcut}
+        onSave={(newToggle, newConfirm) => {
+          setPickerShortcut(newToggle);
+          setPickConfirmShortcut(newConfirm);
           // @ts-ignore
-          if (window.electronAPI) window.electronAPI.setPickerShortcut(newShortcut);
+          if (window.electronAPI) {
+            // @ts-ignore
+            window.electronAPI.setPickerShortcut(newToggle);
+            // @ts-ignore
+            window.electronAPI.setPickConfirmShortcut(newConfirm);
+          }
         }}
       />
 

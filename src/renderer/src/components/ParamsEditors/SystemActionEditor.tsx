@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { ActionEditorProps } from './types'
 
-export default function SystemActionEditor({ currentStep, updateCurrentStep, renderVarLabel }: ActionEditorProps) {
+export default function SystemActionEditor({ currentStep, updateCurrentStep, renderVarLabel, availableVars = [] }: ActionEditorProps) {
+  const [rowDropdownOpen, setRowDropdownOpen] = useState(false);
   return (
     <>
       {currentStep.type === 'waitTimer' && (
@@ -227,7 +228,7 @@ export default function SystemActionEditor({ currentStep, updateCurrentStep, ren
               placeholder="支持 {{_SYS_CURRENT_DATE_}} 或 yyyymmdd"
             />
           </div>
-          <div className="flex flex-col gap-1.5 mt-1.5">
+          <div className="flex flex-col gap-1.5 mt-1">
             <label className="text-[12px] text-gray-500 dark:text-[#b1b8c0] font-medium">输入保存目录路径 (可选)</label>
             <input
               className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full"
@@ -267,22 +268,56 @@ export default function SystemActionEditor({ currentStep, updateCurrentStep, ren
           </div>
           {(currentStep.fileFormat === 'excel' || currentStep.fileFormat === 'csv' || !currentStep.fileFormat) && (
             <div className="grid grid-cols-2 gap-2 mt-1.5">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] text-gray-500 dark:text-[#b1b8c0] font-medium">提取行号 (1开始)</label>
-                <input
-                  type="number"
-                  min="1"
-                  className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full"
-                  value={currentStep.excelRow || 2}
-                  onChange={e => updateCurrentStep({ excelRow: Number(e.target.value) })}
-                />
+              <div className="flex flex-col gap-1.5 relative group/var" tabIndex={-1} onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setRowDropdownOpen(false)
+              }}>
+                <label className="text-[12px] text-gray-500 dark:text-[#b1b8c0] font-medium">提取行号</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="bg-gray-900 text-xs text-gray-300 pl-2.5 pr-6 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full"
+                    value={currentStep.excelRow ?? 2}
+                    onChange={e => {
+                      const val = e.target.value;
+                      updateCurrentStep({ excelRow: isNaN(Number(val)) || val.includes('{') ? val : (val === '' ? '' : Number(val)) })
+                    }}
+                    onFocus={() => setRowDropdownOpen(true)}
+                  />
+                  <button 
+                    onClick={() => setRowDropdownOpen(!rowDropdownOpen)}
+                    className="absolute right-2 top-0 h-full flex items-center text-gray-400 hover:text-primary transition-colors"
+                  >
+                    <span className="text-[10px]">▼</span>
+                  </button>
+                </div>
+                {availableVars && availableVars.length > 0 && (
+                  <div className={`absolute left-0 top-full mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl transition-all z-50 p-1 max-h-40 overflow-y-auto custom-scrollbar ${rowDropdownOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+                    <div className="text-[10px] text-gray-500 px-2 py-1 mb-1 border-b border-gray-700/50">可用变量</div>
+                    <div className="flex flex-col gap-0.5">
+                      {availableVars.map(v => (
+                        <button
+                          key={v}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            updateCurrentStep({ excelRow: `{{${v}}}` });
+                            setRowDropdownOpen(false);
+                          }}
+                          className="text-left px-2 py-1.5 text-xs rounded text-gray-300 hover:bg-gray-700 hover:text-white truncate"
+                          title={v}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] text-gray-500 dark:text-[#b1b8c0] font-medium">提取列字母</label>
                 <input
                   type="text"
                   className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full uppercase"
-                  value={currentStep.excelCol || 'C'}
+                  value={currentStep.excelCol ?? 'C'}
                   onChange={e => updateCurrentStep({ excelCol: e.target.value.toUpperCase() })}
                   placeholder="例如: C"
                 />

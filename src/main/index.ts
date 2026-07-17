@@ -3,10 +3,11 @@ import { join } from 'path'
 import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-// [SECURITY NOTICE] 
+// [SECURITY & LICENSING NOTICE - v1.6.5] 
 // Core modules (browserManager, ExecutionEngine, Scheduler, secureStore, uiaManager) 
 // have been physically isolated from this open-source release to protect 
-// the proprietary anti-bot algorithms and task execution strategies.
+// the proprietary anti-bot algorithms, task execution strategies, and the new
+// V8 bytecode encryption (bytenode) & license verification layers.
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -68,8 +69,6 @@ app.whenReady().then(() => {
 
   // ----------------------------------------------------------------------
   // [REDACTED] Task & Execution Engine API stubs
-  // The actual SQLite persistence and Playwright/UIAutomation automation 
-  // layers are removed. Returning mock data to satisfy React frontend.
   // ----------------------------------------------------------------------
   
   safeHandle('get-all-tasks', () => {
@@ -82,12 +81,23 @@ app.whenReady().then(() => {
     return null
   })
 
-  // [NEW in v1.3.5] Stub for system apps to satisfy new DesktopActionEditor component
   safeHandle('get-system-apps', () => {
     return [
       { name: 'Notepad', executablePath: 'notepad.exe', processName: 'notepad' },
       { name: 'Calculator', executablePath: 'calc.exe', processName: 'calculator' }
     ]
+  })
+  
+  // [NEW in v1.6.5] Stub for Network Interception Rule Configuration
+  safeHandle('save-network-interception-rules', () => {
+    console.warn('[Argus Engine SECURITY] Network interception core is redacted.')
+    return { success: true }
+  })
+  
+  // [NEW in v1.5.0] Stub for License Verification
+  safeHandle('verify-license', () => {
+    console.warn('[Argus License Module] Running in Open-Source UI Mode.')
+    return { success: true, licenseType: 'OPEN_SOURCE' }
   })
 
   safeHandle('get-theme', () => {
@@ -101,7 +111,8 @@ app.whenReady().then(() => {
   // Initialize UI Framework
   createWindow()
 
-  // [REDACTED] Cron Scheduler, OpenCV Image Matcher and Feishu/Slack Notifier initialization omitted
+  // [REDACTED] Cron Scheduler, OpenCV Image Matcher, Network Interceptor, 
+  // Bytenode Compiler, and Feishu/Slack Notifier initialization omitted
 })
 
 app.on('window-all-closed', () => {

@@ -63,7 +63,7 @@ export default function EnvDiagnosisModal({ isOpen, onClose }: { isOpen: boolean
   const hasRequestsError = results.some(r => r.name === 'Python 依赖 (requests)' && r.status === 'error')
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-1.5 rounded-xl overflow-hidden z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div
         className="border rounded-2xl w-[500px] shadow-2xl overflow-hidden flex flex-col"
         style={{ backgroundColor: 'var(--bg-panel)', borderColor: 'var(--border)' }}
@@ -80,7 +80,10 @@ export default function EnvDiagnosisModal({ isOpen, onClose }: { isOpen: boolean
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{isRunning ? '正在进行全维度链路检测...' : '检测完成'}</p>
             </div>
           </div>
-          <button onClick={onClose} disabled={isRunning} className="transition-colors disabled:opacity-50" style={{ color: 'var(--text-muted)' }}>
+          <button onClick={() => {
+            if (isRunning) setIsRunning(false);
+            onClose();
+          }} className="transition-colors hover:opacity-70" style={{ color: 'var(--text-muted)' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>

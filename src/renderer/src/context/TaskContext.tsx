@@ -25,8 +25,10 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [task, setTask] = useState<Partial<ScraperTask>>({
+    id: Math.random().toString(36).substring(2, 10),
     name: '',
     targetUrl: '',
+    createdAt: Date.now(),
     steps: []
   });
   const [isPickerMode, setIsPickerMode] = useState(false);
@@ -67,12 +69,30 @@ export function TaskProvider({ children }: { children: ReactNode }) {
 
   const loadTask = (t: ScraperTask) => {
     setTask(t);
+    setVisitedUrls([]);
+    setIsPickerMode(false);
+    setActiveStepId(null);
+    setPendingStep(null);
+    setActiveDropzone(null);
+    
+    // @ts-ignore
+    if (window.electronAPI && window.electronAPI.navigateBrowser) {
+      if (t.targetUrl) {
+        // @ts-ignore
+        window.electronAPI.navigateBrowser(t.targetUrl.startsWith('http') ? t.targetUrl : 'https://' + t.targetUrl);
+      } else {
+        // @ts-ignore
+        window.electronAPI.navigateBrowser('about:blank');
+      }
+    }
   };
 
   const resetTask = () => {
     setTask({
+      id: Math.random().toString(36).substring(2, 10),
       name: '',
       targetUrl: '',
+      createdAt: Date.now(),
       steps: []
     });
     setIsPickerMode(false);

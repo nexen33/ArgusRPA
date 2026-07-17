@@ -1,18 +1,23 @@
 import React, { useState } from 'react'
 import { useTask } from '../context/TaskContext'
 import { useModal } from '../context/ModalContext'
-import { Lock, Clock, Layers, Link as LinkIcon, Bell, LineChart, ChevronLeft, Save } from 'lucide-react'
+import { Lock, Clock, Layers, Link as LinkIcon, Bell, LineChart, ChevronLeft, Save, Import, ArrowRight, ArrowRightLeft, AlertTriangle, ArrowDownLeft, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react'
+import { parseChromeRecorderJSON } from '../utils/chromeRecorderParser'
 import BatchParamEditor from './BatchParamEditor'
 import { DomActionEditor, SystemActionEditor, FlowActionEditor } from './ParamsEditors'
+import { SmartXPathSelector } from './ParamsEditors/DomActionEditor'
 
 const GLOBAL_TYPES = ['waitTimer', 'navigate', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython', 'goto']
 
 
 export default function ParamsPanel() {
-  const { task, updateTask, activeStepId, setActiveStepId, setIsPickerMode, visitedUrls, pendingStep, setPendingStep, activeDropzone, setActiveDropzone } = useTask()
+  const { task, updateTask, activeStepId, setActiveStepId, isPickerMode, setIsPickerMode, visitedUrls, pendingStep, setPendingStep, activeDropzone, setActiveDropzone } = useTask()
   const modal = useModal()
   const [activeConfigCard, setActiveConfigCard] = useState<string | null>(null)
-      const [actionTypeDropdownOpen, setActionTypeDropdownOpen] = useState(false)
+  const [actionTypeDropdownOpen, setActionTypeDropdownOpen] = useState(false)
+  const [downloadAdvancedExpanded, setDownloadAdvancedExpanded] = useState(false)
+
+  const isReselectRef = React.useRef(false)
 
   React.useEffect(() => {
     // @ts-ignore
@@ -23,6 +28,18 @@ export default function ParamsPanel() {
       // @ts-ignore
       window.electronAPI.setPickerMode(false)
 
+      if (isReselectRef.current && activeStepId) {
+        updateActiveStep({
+          selector: data.cssSelector || '',
+          selectorXPath: data.xpath || '',
+          tagName: data.tagName || '',
+          innerText: data.innerText || '',
+          clickMode: data.isIframe ? 'cdp' : 'dom'
+        })
+        isReselectRef.current = false
+        return
+      }
+
       setPendingStep((prev: any) => {
         if (prev) {
           return {
@@ -32,6 +49,7 @@ export default function ParamsPanel() {
             selectorXPath: data.xpath || '',
             tagName: data.tagName || '',
             innerText: data.innerText || '',
+            clickMode: data.isIframe ? 'cdp' : 'dom'
           }
         }
         return {
@@ -44,7 +62,8 @@ export default function ParamsPanel() {
           outputVariable: '',
           value: '',
           attrName: '',
-          description: ''
+          description: '',
+          clickMode: data.isIframe ? 'cdp' : 'dom'
         }
       })
       setActiveStepId(null) // deselect active step to show creation panel
@@ -52,7 +71,13 @@ export default function ParamsPanel() {
     return () => {
       unsub && unsub()
     }
-  }, [setIsPickerMode, setActiveStepId])
+  }, [setIsPickerMode, setActiveStepId, activeStepId])
+
+  React.useEffect(() => {
+    if (!isPickerMode) {
+      isReselectRef.current = false
+    }
+  }, [isPickerMode])
 
   React.useEffect(() => {
     if (activeStepId) {
@@ -82,8 +107,35 @@ export default function ParamsPanel() {
 
   const confirmPendingStep = () => {
     if (!pendingStep) return
+
+    if (pendingStep.type === 'readLocalFile' && (!pendingStep.fileFormat || pendingStep.fileFormat === 'excel' || pendingStep.fileFormat === 'csv')) {
+      if (!pendingStep.excelCol || pendingStep.excelCol.trim() === '') {
+        modal.toast('添加失败：必须填写「提取列字母」')
+        return
+      }
+    }
+
     if (!activeDropzone) {
-      updateTask({ steps: [...(task.steps || []), pendingStep] })
+      if (pendingStep.insertAfterId) {
+        const insertRecursive = (steps: any[]): any[] => {
+          const newSteps: any[] = [];
+          for (const s of steps) {
+            newSteps.push(s);
+            if (s.id === pendingStep.insertAfterId) {
+              const { insertAfterId, ...stepToInsert } = pendingStep;
+              newSteps.push(stepToInsert);
+            }
+            if (s.type === 'if_else') {
+              s.trueBranchSteps = s.trueBranchSteps ? insertRecursive(s.trueBranchSteps) : [];
+              s.falseBranchSteps = s.falseBranchSteps ? insertRecursive(s.falseBranchSteps) : [];
+            }
+          }
+          return newSteps;
+        };
+        updateTask({ steps: insertRecursive(task.steps || []) });
+      } else {
+        updateTask({ steps: [...(task.steps || []), pendingStep] })
+      }
     } else {
       const recursiveInsert = (steps: any[]): any[] => {
         return steps.map(s => {
@@ -106,6 +158,13 @@ export default function ParamsPanel() {
       }
       updateTask({ steps: recursiveInsert(task.steps || []) })
     }
+
+    if ((pendingStep.type === 'click' || pendingStep.type === 'mouseMove') && pendingStep.autoExecuteAfterAdd !== false) {
+      setIsPickerMode(false)
+      // @ts-ignore
+      window.electronAPI?.testSingleStep?.(pendingStep, task.id)
+    }
+
     setPendingStep(null)
     setActiveStepId(null)
     setActiveDropzone(null)
@@ -126,7 +185,7 @@ export default function ParamsPanel() {
   const handleTriggerLogin = () => {
     if (!task.loginPageUrl) {
       // @ts-ignore
-      modal.toast('❌ 无法运行：请先填写登录页 URL')
+      modal.toast('无法运行：请先填写登录页 URL')
       return
     }
 
@@ -303,27 +362,55 @@ export default function ParamsPanel() {
                   待添加
                 </span>
               ) : (
-                <button
-                  onClick={() => setActiveStepId(null)}
-                  className="text-green-500 hover:text-green-400 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 w-7 h-7 flex items-center justify-center rounded transition-colors font-bold text-lg"
-                  title="完成编辑并保存"
-                >
-                  ✓
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      isReselectRef.current = true
+                      setIsPickerMode(true)
+                      // @ts-ignore
+                      window.electronAPI.setPickerMode(true)
+                    }}
+                    className="text-amber-500 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-2 h-7 flex items-center justify-center gap-1 rounded-md transition-colors"
+                    title="重新选择此元素"
+                  >
+                    <ArrowDownLeft size={16} strokeWidth={2.5} />
+                    <span className="text-[12px] font-bold">重新选取</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveStepId(null)}
+                    className="text-green-500 hover:text-green-400 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 w-7 h-7 flex items-center justify-center rounded-md transition-colors font-bold text-lg"
+                    title="完成编辑并保存"
+                  >
+                    ✓
+                  </button>
+                </div>
               )}
             </div>
 
             {/* 元素基本信息预览 */}
-            {(currentStep.tagName || currentStep.innerText) && !GLOBAL_TYPES.includes(currentStep.type) && (
-              <div className="bg-gray-900/60 p-2.5 rounded-lg border border-gray-700 shadow-inner">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold uppercase shrink-0">
-                    {currentStep.tagName}
-                  </span>
-                  <span className="text-[11px] text-gray-400 truncate" title={currentStep.innerText}>
-                    {currentStep.innerText || '<无文本内容>'}
-                  </span>
+            {(currentStep.tagName || currentStep.innerText) && (
+              <div className="flex gap-2 w-full">
+                <div className={`bg-gray-900/60 p-2.5 rounded-lg border border-gray-700 shadow-inner min-w-0 ${['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython'].includes(currentStep.type) ? 'flex-1' : 'flex-[3]'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold uppercase shrink-0">
+                      {currentStep.tagName}
+                    </span>
+                    <span className="text-[11px] text-gray-400 truncate flex-1" title={currentStep.innerText}>
+                      {currentStep.innerText || '<无文本内容>'}
+                    </span>
+                  </div>
                 </div>
+                {!['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython'].includes(currentStep.type) && (
+                  <div className="flex-[2] min-w-0">
+                    <input
+                      type="text"
+                      className="bg-gray-900/60 text-[11px] text-gray-300 px-2 py-2.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full h-full shadow-inner"
+                      value={currentStep.description || ''}
+                      onChange={e => updateCurrentStep({ description: e.target.value })}
+                      placeholder="可自定义提示名称"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -502,10 +589,136 @@ export default function ParamsPanel() {
               </div>
             )}
 
+            {/* Auto Execute & Click Mode Toggle */}
+            {(currentStep.type === 'click' || currentStep.type === 'mouseMove' || currentStep.type === 'input') && (isPending || currentStep.type !== 'mouseMove') && (
+              <div className="flex items-center justify-between" style={{ margin: '2px 0' }}>
+                {isPending ? (
+                  <label className={`flex items-center gap-2 bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 cursor-pointer hover:border-gray-500 transition-colors select-none ${currentStep.type === 'mouseMove' || currentStep.type === 'downloadFile' ? 'w-full' : 'w-fit'}`}>
+                    <input
+                      type="checkbox"
+                      checked={currentStep.autoExecuteAfterAdd !== false}
+                      onChange={e => updateCurrentStep({ autoExecuteAfterAdd: e.target.checked })}
+                      className="rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5"
+                    />
+                    <span>添加步骤后自动执行一次操作</span>
+                  </label>
+                ) : <div />}
+                
+                {(currentStep.type !== 'mouseMove' && currentStep.type !== 'downloadFile') && (
+                  <div className="relative flex bg-gray-900 border border-gray-700 rounded-lg p-0.5 select-none items-center w-[124px]" style={{ height: isPending ? '100%' : '28px' }}>
+                    {/* Sliding Background */}
+                    <div 
+                      className="absolute bg-blue-600 rounded-md shadow-sm transition-all duration-300 ease-out"
+                      style={{ 
+                        top: '2px',
+                        bottom: '2px',
+                        left: '2px',
+                        width: 'calc(50% - 2px)',
+                        transform: (!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'translateX(0)' : 'translateX(100%)'
+                      }}
+                    />
+                    <div
+                      onClick={() => updateCurrentStep({ clickMode: 'cdp' })}
+                      className={`relative z-10 flex-1 text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                    >
+                      物理CDP
+                    </div>
+                    <div
+                      onClick={() => updateCurrentStep({ clickMode: 'dom' })}
+                      className={`relative z-10 flex-1 text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(currentStep.clickMode === 'dom') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                    >
+                      代码DOM
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 统一使用新拆分的组件渲染各种动作的参数配置区域 */}
             <DomActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} renderVarLabel={renderVarLabel} />
-            <SystemActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} renderVarLabel={renderVarLabel} />
+            <SystemActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} availableVars={availableVars} renderVarLabel={renderVarLabel} />
             <FlowActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} availableVars={availableVars} renderVarLabel={renderVarLabel} task={task} />
+
+            {/* 点击操作高级设置 for downloadFile */}
+            {currentStep.type === 'downloadFile' && (
+              <div className="border border-gray-700 rounded-lg bg-gray-800/50 mt-1 overflow-hidden transition-all duration-300 ease-in-out">
+                <button
+                  onClick={() => setDownloadAdvancedExpanded(!downloadAdvancedExpanded)}
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 hover:bg-gray-700/50 transition-colors"
+                >
+                  {downloadAdvancedExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  点击操作高级设置
+                </button>
+                <div 
+                  className="transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: downloadAdvancedExpanded ? '800px' : '0', opacity: downloadAdvancedExpanded ? 1 : 0 }}
+                >
+                  <div className="p-3 pt-0 flex flex-col gap-3">
+                    
+                    {/* 1. Auto Execute & Click Mode Toggle (Identical to top level) */}
+                    <div className="flex items-center justify-between" style={{ margin: '2px 0' }}>
+                      {isPending ? (
+                        <label className="flex items-center gap-2 bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 cursor-pointer hover:border-gray-500 transition-colors select-none w-fit">
+                          <input
+                            type="checkbox"
+                            checked={!!currentStep.autoExecuteAfterAdd}
+                            onChange={e => updateCurrentStep({ autoExecuteAfterAdd: e.target.checked })}
+                            className="rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5"
+                          />
+                          <span>添加步骤后自动执行一次操作</span>
+                        </label>
+                      ) : <div />}
+                      
+                      <div className="relative flex bg-gray-900 border border-gray-700 rounded-lg p-0.5 select-none items-center w-[124px]" style={{ height: isPending ? '100%' : '28px' }}>
+                        {/* Sliding Background */}
+                        <div 
+                          className="absolute bg-blue-600 rounded-md shadow-sm transition-all duration-300 ease-out"
+                          style={{ 
+                            top: '2px',
+                            bottom: '2px',
+                            left: '2px',
+                            width: 'calc(50% - 2px)',
+                            transform: (!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'translateX(0)' : 'translateX(100%)'
+                          }}
+                        />
+                        <div
+                          onClick={() => updateCurrentStep({ clickMode: 'cdp' })}
+                          className={`relative z-10 flex-1 text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(!currentStep.clickMode || currentStep.clickMode === 'cdp') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                          物理CDP
+                        </div>
+                        <div
+                          onClick={() => updateCurrentStep({ clickMode: 'dom' })}
+                          className={`relative z-10 flex-1 text-[11px] px-1 py-1 cursor-pointer transition-colors text-center font-bold ${(currentStep.clickMode === 'dom') ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                        >
+                          代码DOM
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Smart Parent Click */}
+                    <label className="flex items-start gap-2 bg-gray-900 text-xs text-gray-300 px-2.5 py-2 rounded-lg outline-none border border-gray-700 cursor-pointer hover:border-gray-500 transition-colors select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!currentStep.smartParentClick}
+                        onChange={e => updateCurrentStep({ smartParentClick: e.target.checked })}
+                        className="mt-0.5 rounded border-gray-600 text-primary focus:ring-primary bg-gray-900 cursor-pointer w-3.5 h-3.5 shrink-0"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-200">智能穿透点击</span>
+                        <span className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                          过滤双路内层的 svg/path/img 等标签，解决点击无响应
+                        </span>
+                      </div>
+                    </label>
+
+                    {/* 3. SmartXPathSelector */}
+                    <SmartXPathSelector currentStep={currentStep} updateCurrentStep={updateCurrentStep} />
+
+                  </div>
+                </div>
+              </div>
+            )}
 
             {isPending && (
               <div className="grid grid-cols-2 gap-3 mt-1">
@@ -526,8 +739,91 @@ export default function ParamsPanel() {
           </>
         ) : (
           <>
-            <h2 className="font-bold text-lg text-gray-200">操作中心</h2>
-            <div className="flex flex-col items-center justify-center h-[136px] text-gray-500 text-sm text-center bg-gray-900/50 rounded-lg">
+            <div className="flex items-center justify-between min-h-8">
+              <h2 className="font-bold text-lg text-gray-200 ml-2">操作中心</h2>
+              {(!task.steps || task.steps.length === 0) && !isPending && (
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('chrome-recorder-import-input') as HTMLInputElement
+                    if (input) input.click()
+                  }}
+                  className="text-xs font-normal text-gray-300 bg-gray-800 border border-gray-700 hover:opacity-80 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-opacity"
+                >
+                  <Import size={14} className="text-gray-400" />
+                  从 Chrome Recorder 导入
+                </button>
+              )}
+            </div>
+            <input 
+              type="file" 
+              id="chrome-recorder-import-input" 
+              accept=".json" 
+              className="hidden" 
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const content = await file.text();
+                  const result = parseChromeRecorderJSON(content);
+                  if (result.validCount === 0) {
+                    modal.toast('未能解析到任何有效步骤，请确认文件格式是否正确。');
+                    return;
+                  }
+                  
+                  const confirmed = await modal.confirm({
+                    title: '确认导入操作步骤',
+                    icon: <ArrowRightLeft className="text-primary w-[18px] h-[18px]" />,
+                    message: (
+                      <div className="flex flex-col gap-[18px] -mt-1.5">
+                        <div className="flex items-center justify-between text-[13px] bg-gray-800/40 px-3 py-2 rounded-lg border border-gray-700 shadow-inner">
+                          <span className="text-gray-300">成功解析了 <strong className="text-primary text-[15px] px-0.5">{result.total}</strong> 步记录</span>
+                          <ArrowRight size={16} className="text-gray-500 shrink-0" />
+                          <span className="text-gray-300 text-right">智能转换为 <strong className="text-primary text-[15px] px-0.5">{result.validCount}</strong> 个节点</span>
+                        </div>
+                        <div className="bg-gray-800/60 rounded-lg border border-gray-700 max-h-48 overflow-y-auto p-2 flex flex-col gap-1.5 thin-scrollbar">
+                          {result.targetUrl && (
+                            <div className="flex items-center gap-2 text-[12px]">
+                              <span className="w-5 h-5 rounded-full bg-gray-700 text-gray-300 flex items-center justify-center font-mono shrink-0 text-[10px]">0</span>
+                              <div className="flex-1 min-w-0 flex items-center gap-2 opacity-80">
+                                <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded text-[10px] uppercase shrink-0 font-bold tracking-wider">URL</span>
+                                <span className="text-gray-500 dark:text-gray-400 truncate flex-1 min-w-0">目标网址: {result.targetUrl}</span>
+                              </div>
+                            </div>
+                          )}
+                          {result.steps.map((s, idx) => (
+                            <div key={idx} className="flex items-center gap-2 text-[12px]">
+                              <span className="w-5 h-5 rounded-full bg-gray-700 text-gray-300 flex items-center justify-center font-mono shrink-0 text-[10px]">{idx + 1}</span>
+                              <div className="flex-1 min-w-0 flex items-center gap-2">
+                                <span className="bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded text-[10px] uppercase shrink-0 font-bold tracking-wider">{s.type}</span>
+                                <span className="text-gray-400 truncate flex-1 min-w-0">{s.description || '无描述'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 flex items-center justify-center gap-1.5 font-medium">
+                          <AlertTriangle size={14} className="shrink-0" />
+                          导入后将应用至当前管线，您可以手动继续微调参数
+                        </p>
+                      </div>
+                    ),
+                    confirmText: '确认导入'
+                  });
+
+                  if (confirmed) {
+                    let newUrl = task.targetUrl;
+                    if (result.targetUrl) {
+                      newUrl = result.targetUrl;
+                    }
+                    updateTask({ steps: result.steps, targetUrl: newUrl });
+                    modal.toast('Chrome Recorder 步骤导入成功！');
+                  }
+                } catch (err: any) {
+                  modal.toast(`导入失败: ${err.message}`);
+                }
+                e.target.value = '';
+              }}
+            />
+            <div className="flex flex-col items-center justify-center h-[136px] text-gray-500 text-sm text-center bg-gray-900/50 rounded-lg mt-1.5">
               <span>请在左侧选择元素 或 右侧新建步骤</span>
               <span>以在此处配置其参数</span>
             </div>

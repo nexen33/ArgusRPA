@@ -14,10 +14,12 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
   const [clearConfigsOnExport, setClearConfigsOnExport] = useState(false)
   const [notificationConfigs, setNotificationConfigs] = useState<any[]>([])
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null)
+  const [errorFlashing, setErrorFlashing] = useState<Set<string>>(new Set())
   const [isTableScrolled, setIsTableScrolled] = useState(false)
   const headerScrollRef = useRef<HTMLDivElement>(null)
   const [isSortLocked, setIsSortLocked] = useState(true)
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
+  const [draggingCol, setDraggingCol] = useState<string | null>(null)
   
   useEffect(() => {
     return () => setIsSortLocked(true)
@@ -55,9 +57,16 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (rafId) cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
+        let minW = col === 'name' ? 140 : 60;
+        let maxW = 600;
+        if (col === 'name') maxW = 400;
+        else if (col === 'steps' || col === 'monitor') maxW = 140;
+        else if (col === 'batch' || col === 'schedule') maxW = 180;
+        else if (col === 'notify' || col === 'created' || col === 'run') maxW = 240;
+        
         setColWidths((prev: any) => ({
           ...prev,
-          [col]: Math.min(600, Math.max(60, startWidth + (moveEvent.clientX - startX)))
+          [col]: Math.min(maxW, Math.max(minW, startWidth + (moveEvent.clientX - startX)))
         }))
       })
     }
@@ -65,9 +74,11 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       if (rafId) cancelAnimationFrame(rafId)
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
+      setDraggingCol(null)
     }
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
+    setDraggingCol(col as string)
   }
 
   const fetchTasks = async () => {
@@ -113,9 +124,31 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     checkActive()
     const timer = setInterval(checkActive, 1000)
     
+    const handleTaskComplete = (data: any) => {
+      fetchTasks() // 实时刷新任务最后运行时间
+      if (data?.error || data?.skippedSteps?.length > 0) {
+        setErrorFlashing(prev => new Set(prev).add(data.taskId))
+        setTimeout(() => {
+          setErrorFlashing(prev => {
+            const next = new Set(prev)
+            next.delete(data.taskId)
+            return next
+          })
+        }, 2000)
+      }
+    }
+    // @ts-ignore
+    let removeTaskCompleteListener: (() => void) | undefined;
+    // @ts-ignore
+    if (window.electronAPI && window.electronAPI.onTaskComplete) {
+      // @ts-ignore
+      removeTaskCompleteListener = window.electronAPI.onTaskComplete(handleTaskComplete)
+    }
+
     return () => {
       clearInterval(timer)
       window.removeEventListener('task-saved', handleTaskSaved)
+      if (removeTaskCompleteListener) removeTaskCompleteListener()
     }
   }, [])
 
@@ -427,7 +460,10 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
             导入任务
           </button>
           <button
-            onClick={() => onNavigate('configurator')}
+            onClick={() => {
+              resetTask()
+              onNavigate('configurator')
+            }}
             className="flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary dark:text-white border border-primary/30 dark:border-slate-500/60 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 ml-2"
           >
             <Plus size={16} strokeWidth={3} /> 创建新任务
@@ -455,39 +491,57 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                 <tr className="bg-gray-900 border-b border-gray-800 text-sm text-gray-300 font-bold uppercase tracking-wider select-none">
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-4 py-4 overflow-hidden whitespace-nowrap">任务名称</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('name', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('name', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'name' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">操作步骤数</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('steps', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('steps', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'steps' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">批量状态</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('batch', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('batch', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'batch' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">定时状态</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('schedule', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('schedule', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'schedule' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">通知状态</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('notify', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('notify', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'notify' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">运行监控</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('monitor', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('monitor', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'monitor' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">创建日期</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('created', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('created', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'created' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 border-r border-gray-800 last:border-0 align-top relative group">
                     <div className="px-3 py-4 text-center overflow-hidden whitespace-nowrap">上次运行时间</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('run', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('run', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'run' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                   <th className="p-0 align-top relative group">
                     <div className="px-4 py-4 text-center overflow-hidden whitespace-nowrap">操作</div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary z-10" onMouseDown={(e) => handleResize('actions', e)} />
+                    <div className="absolute top-0 bottom-0 w-4 -right-2 cursor-col-resize z-20 flex justify-center group/resizer" onMouseDown={(e) => handleResize('actions', e)}>
+                      <div className={`w-1 h-full transition-colors ${draggingCol === 'actions' ? 'bg-primary opacity-50' : 'group-hover/resizer:bg-primary'}`} />
+                    </div>
                   </th>
                 </tr>
               </thead>
@@ -545,15 +599,17 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                         className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
                             activeTasks.has(t.id) 
                             ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)] animate-pulse' 
+                            : errorFlashing.has(t.id)
+                            ? 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.3)] animate-pulse'
                             : (t.scheduleConfigured && t.scheduleEnabled)
                             ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                             : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700 hover:text-gray-200 shadow-sm'
                           }`}
-                        title={activeTasks.has(t.id) ? '任务正在执行中...' : (t.scheduleConfigured && t.scheduleEnabled) ? '停止定时调度' : '启动'}
+                        title={activeTasks.has(t.id) ? '任务正在执行中...' : errorFlashing.has(t.id) ? '任务刚中止或发生错误' : (t.scheduleConfigured && t.scheduleEnabled) ? '停止定时调度' : '启动'}
                       >
-                        {activeTasks.has(t.id) || (t.scheduleConfigured && t.scheduleEnabled) ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" className="ml-0.5" />}
+                        {activeTasks.has(t.id) || (t.scheduleConfigured && t.scheduleEnabled) ? <Square size={13} fill="currentColor" /> : errorFlashing.has(t.id) ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" className="ml-0.5" />}
                       </button>
-                      <span className="font-bold text-gray-200 text-base truncate max-w-[180px]" title={t.name}>{t.name}</span>
+                      <span className="font-bold text-gray-200 text-base truncate max-w-[300px]" title={t.name}>{t.name}</span>
                     </div>
                   </td>
                   <td className="px-3 py-4 text-center">

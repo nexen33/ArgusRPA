@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [argusIssuePath, setArgusIssuePath] = useState('')
   const [hasOtherDrives, setHasOtherDrives] = useState(false)
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false)
+  const [licenseInfo, setLicenseInfo] = useState<any>(null)
 
   useEffect(() => {
     // Load initial settings
@@ -55,6 +56,10 @@ export default function SettingsPage() {
         // @ts-ignore
         const drivesRes = await window.electronAPI.getHasOtherDrives?.()
         if (drivesRes?.success) setHasOtherDrives(drivesRes.data)
+
+        // @ts-ignore
+        const licRes = await window.electronAPI.getLicenseInfo?.()
+        if (licRes) setLicenseInfo(licRes)
       }
       setLoading(false)
     }
@@ -128,7 +133,7 @@ export default function SettingsPage() {
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>全局系统参数与外观偏好</p>
         </div>
         <div style={{ WebkitAppRegion: 'no-drag' } as any}>
-          <button 
+          <button
             onClick={() => setIsEnvModalOpen(true)}
             className="flex items-center gap-1 px-4 py-2 rounded-xl font-bold text-sm transition-colors border"
             style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
@@ -269,7 +274,29 @@ export default function SettingsPage() {
 
             {/* Last Row: About */}
             <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex flex-col shadow-sm h-full min-h-0 relative">
-              <h2 className="text-2xl font-black tracking-wider mb-3" style={{ color: 'var(--text-primary)' }}>Argus</h2>
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="text-2xl font-black tracking-wider" style={{ color: 'var(--text-primary)' }}>Argus</h2>
+                <div className="group relative flex items-center">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border tracking-wide cursor-default ${licenseInfo?.isPro
+                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                      : 'bg-gray-500/20 text-gray-400 border-gray-600/30'
+                    }`}>
+                    {licenseInfo?.isPro ? 'PRO' : 'FREE'}
+                  </span>
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
+                    <div
+                      className="border shadow-xl rounded-lg px-3 py-1.5 text-xs whitespace-nowrap font-medium"
+                      style={{
+                        backgroundColor: 'var(--bg-elevated)',
+                        borderColor: 'var(--border)',
+                        color: (licenseInfo?.isPro && licenseInfo?.type === 'device' && licenseInfo?.expiresAt && Math.ceil((new Date(licenseInfo.expiresAt).getTime() - Date.now()) / 86400000) <= 30) ? '#ef4444' : 'var(--text-primary)'
+                      }}
+                    >
+                      {(!licenseInfo?.isPro || licenseInfo?.type === 'lifetime') ? '永久有效' : `有效期还剩 ${Math.ceil((new Date(licenseInfo!.expiresAt).getTime() - Date.now()) / 86400000)} 天`}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>可视化跨端RPA工具</p>
               <img src="./logo.png" onError={(e) => e.currentTarget.style.display = 'none'} className="absolute top-6 right-6 w-16 h-16 object-contain opacity-80" style={{ imageRendering: 'high-quality' as any, transform: 'translateZ(0)' }} alt="Logo" />
               <div className="mt-auto mb-3 flex justify-between items-end text-[12px] font-mono opacity-50" style={{ color: 'var(--text-muted)' }}>

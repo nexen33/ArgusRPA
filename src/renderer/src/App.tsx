@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import TaskConfigurator from './components/TaskConfigurator'
 import TaskList from './components/TaskList'
@@ -10,6 +10,7 @@ import MonitorPanel from './components/MonitorPanel'
 import SettingsPage from './components/SettingsPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useTask } from './context/TaskContext'
+import ActivationPage from './components/ActivationPage'
 
 function App() {
   const { resetTask } = useTask()
@@ -49,7 +50,7 @@ function App() {
     }
   }, [])
 
-  React.useEffect(() => {
+  useEffect(() => {
     let timer: any
     if (activePage !== 'configurator') {
       timer = setTimeout(() => {
@@ -60,6 +61,10 @@ function App() {
       if (timer) clearTimeout(timer)
     }
   }, [activePage])
+
+  if (window.location.hash === '#/activation') {
+    return <ActivationPage />
+  }
 
   return (
     <div className="flex h-screen w-screen bg-transparent p-1.5">

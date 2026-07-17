@@ -4,6 +4,12 @@ import { resolve } from 'path'
 
 export default defineConfig({
   main: {
+    resolve: {
+      alias: {
+        'bufferutil': resolve(__dirname, 'src/main/dummy.js'),
+        'utf-8-validate': resolve(__dirname, 'src/main/dummy.js')
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   preload: {
@@ -12,7 +18,8 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.ts'),
-          viewPreload: resolve(__dirname, 'src/preload/viewPreload.ts')
+          viewPreload: resolve(__dirname, 'src/preload/viewPreload.ts'),
+          activationPreload: resolve(__dirname, 'src/preload/activationPreload.ts')
         }
       }
     }

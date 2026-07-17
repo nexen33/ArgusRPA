@@ -11,6 +11,7 @@ export default function RunStatusBar() {
   const [errorMsg, setErrorMsg] = useState('')
   const [variables, setVariables] = useState<Record<string, string>>({})
   const [currentStepId, setCurrentStepId] = useState<string | null>(null)
+  const [skippedCount, setSkippedCount] = useState<number>(0)
   
   const [downloadProgress, setDownloadProgress] = useState<{percent: number, received: number, total: number, state: string} | null>(null)
 
@@ -88,6 +89,14 @@ export default function RunStatusBar() {
       if (!data || !data.taskId || data.taskId === task.id) {
         setStatus('complete')
         if (data.variables) setVariables(data.variables)
+        
+        let totalSkipped = 0;
+        if (data.batchResults) {
+          totalSkipped = data.batchResults.reduce((acc: number, r: any) => acc + (r.skippedSteps ? r.skippedSteps.length : 0), 0)
+        } else if (data.skippedSteps) {
+          totalSkipped = data.skippedSteps.length
+        }
+        setSkippedCount(totalSkipped)
       }
     })
 
@@ -106,6 +115,7 @@ export default function RunStatusBar() {
         setErrorMsg('')
         setVariables({})
         setCurrentStepId(null)
+        setSkippedCount(0)
       }
     })
 
@@ -140,6 +150,7 @@ export default function RunStatusBar() {
     setErrorMsg('')
     setVariables({})
     setCurrentStepId(null)
+    setSkippedCount(0)
     setDownloadProgress(null)
     try {
       // @ts-ignore
@@ -155,7 +166,6 @@ export default function RunStatusBar() {
     if (!ok) return
     // @ts-ignore
     await window.electronAPI.stopTask()
-    setStatus('idle')
   }
 
   if (status === 'idle') {
@@ -189,7 +199,7 @@ export default function RunStatusBar() {
     switch (status) {
       case 'running': return 'var(--accent)'
       case 'paused': return 'var(--warning)'
-      case 'complete': return 'var(--success)'
+      case 'complete': return skippedCount > 0 ? 'var(--warning)' : 'var(--success)'
       case 'error': return 'var(--danger)'
       default: return 'var(--text-muted)'
     }
@@ -199,7 +209,7 @@ export default function RunStatusBar() {
     switch (status) {
       case 'running': return 'var(--accent-subtle)'
       case 'paused': return 'var(--warning-subtle)'
-      case 'complete': return 'var(--success-subtle)'
+      case 'complete': return skippedCount > 0 ? 'var(--warning-subtle)' : 'var(--success-subtle)'
       case 'error': return 'var(--danger-subtle)'
       default: return 'transparent'
     }
@@ -214,7 +224,8 @@ export default function RunStatusBar() {
         <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0">
           {status === 'running' && <Loader2 size={24} className="animate-spin" style={{ color: getStatusColor() }} />}
           {status === 'paused' && <Pause size={20} style={{ color: getStatusColor() }} />}
-          {status === 'complete' && <CheckCircle size={24} style={{ color: getStatusColor() }} />}
+          {status === 'complete' && skippedCount === 0 && <CheckCircle size={24} style={{ color: getStatusColor() }} />}
+          {status === 'complete' && skippedCount > 0 && <AlertCircle size={24} style={{ color: getStatusColor() }} />}
           {status === 'error' && <AlertCircle size={24} style={{ color: getStatusColor() }} />}
         </div>
         
@@ -223,7 +234,7 @@ export default function RunStatusBar() {
             <span className="text-sm font-bold" style={{ color: getStatusColor() }}>
               {status === 'running' ? '任务正在全自动执行中...' :
                status === 'paused' ? '引擎已暂停 (等待调试)' :
-               status === 'complete' ? '任务执行完毕' :
+               status === 'complete' ? (skippedCount > 0 ? `任务未全部执行，有 ${skippedCount} 个步骤失败/超时` : '任务执行完毕') :
                '任务执行异常中断'}
             </span>
             {currentStepId && status !== 'complete' && status !== 'error' && (
@@ -250,8 +261,8 @@ export default function RunStatusBar() {
           
           <div className="text-[11px] max-w-xl truncate" style={{ color: 'var(--text-secondary)' }}>
             {status === 'error' ? errorMsg : 
-             status === 'complete' ? `成功收集到 ${Object.keys(variables).length} 个变量。` :
-             '已捕获变量: ' + (Object.keys(variables).length > 0 ? JSON.stringify(variables) : '无')}
+             status === 'complete' ? `成功收集到 ${Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length} 个变量。` :
+             '已捕获变量: ' + (Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length > 0 ? JSON.stringify(Object.fromEntries(Object.entries(variables).filter(([k]) => !k.startsWith('_SYS_')))) : '无')}
           </div>
         </div>
       </div>
@@ -285,7 +296,10 @@ export default function RunStatusBar() {
         
         {(status === 'complete' || status === 'error') && (
           <button 
-            onClick={() => setStatus('idle')}
+            onClick={() => {
+              setStatus('idle');
+              window.dispatchEvent(new CustomEvent('task-idle'));
+            }}
             className="px-4 py-1.5 rounded-lg font-bold text-sm transition-all border"
             style={{ backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', borderColor: 'var(--border-strong)' }}
           >

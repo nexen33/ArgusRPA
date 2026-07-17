@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTask } from '../context/TaskContext'
 // @ts-ignore
-import { Bug, Save, BugOff, ChevronDown } from 'lucide-react'
+import { Bug, Save, BugOff, ChevronDown, ShieldCheck } from 'lucide-react'
 import { useModal } from '../context/ModalContext'
 import { ScraperStep, ScraperTask } from '../../../shared/types'
 // @ts-ignore
@@ -10,6 +10,27 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 // @ts-ignore
 import { CSS } from '@dnd-kit/utilities'
+
+// 提取元素提示
+const getElementHint = (step: any) => {
+  if (step.description && !step.description.startsWith('手动添加')) return step.description;
+  const text = (step.innerText || '').trim();
+  if (!text) return '';
+  
+  if (/%$/.test(text) && /\d/.test(text)) {
+    return text.replace(/\d/g, 'X');
+  }
+  if (/^-?[\d,.]+\.?\d*$/.test(text)) {
+    return text.replace(/\d/g, 'X');
+  }
+  
+  let isChinese = /[\u4e00-\u9fa5]/.test(text);
+  let limit = isChinese ? 7 : 9;
+  if (text.length > limit) {
+    return text.substring(0, limit) + '...';
+  }
+  return text;
+}
 
 // 步骤卡片组件
 function StepNode({
@@ -96,7 +117,7 @@ function StepNode({
   return (
     <div className="flex flex-col gap-2">
       <div
-        className={`flex flex-col gap-2 ${isChild ? 'p-2' : 'p-3'} bg-gray-800/80 border rounded-lg group transition-colors select-none ${(isActive && !isTaskRunning) ? 'border-primary shadow-[0_0_15px_rgba(59,130,246,0.4)] animate-pulse bg-blue-900/20' :
+        className={`flex flex-col gap-2 ${isChild ? 'px-2 py-1' : 'px-3 py-1.5'} bg-gray-800/80 border rounded-lg group transition-colors select-none ${(isActive && !isTaskRunning) ? 'border-primary shadow-[0_0_15px_rgba(59,130,246,0.4)] animate-pulse bg-blue-900/20' :
             (isActive && isTaskRunning) ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.2)] bg-amber-900/10' :
               result?.success ? 'border-green-500/30 bg-green-900/10' :
                 result?.error ? 'border-red-500/30 bg-red-900/10' :
@@ -119,6 +140,16 @@ function StepNode({
           <div className="flex-1 overflow-hidden">
             <div className="text-xs font-bold mb-0.5 flex gap-2 items-center">
               {getTypeLabel(step.type)}
+              {step.validationConfig?.enabled && (
+                <span className="text-blue-400 translate-y-[-1px]" title={`网络核验保护中: ${step.validationConfig.expectedUrlPattern}`}>
+                  <ShieldCheck size={13} strokeWidth={2.5} />
+                </span>
+              )}
+              {!['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition'].includes(step.type) && getElementHint(step) && (
+                <span className="text-gray-300 font-normal bg-gray-700/50 px-1.5 py-[2px] leading-none rounded text-[11px] shrink-0 border border-gray-600/50 flex items-center justify-center">
+                  {getElementHint(step)}
+                </span>
+              )}
               <span className="text-gray-500 dark:text-[#b1b8c0] truncate block flex-1 font-normal" title={step.selector}>
                 {step.selector || '全局操作'}
               </span>
@@ -376,6 +407,14 @@ export default function StepsList() {
     }
     window.addEventListener('step-executing', handleStepExecuting)
 
+    const handleTaskIdle = () => {
+      setStepResults({})
+      setActiveStepId(null)
+      setExecutingStepId(null)
+      setIsTaskRunning(false)
+    }
+    window.addEventListener('task-idle', handleTaskIdle)
+
     // @ts-ignore
     const unsubTaskStarted = window.electronAPI.onTaskStarted && window.electronAPI.onTaskStarted((data: any) => {
       if (!data || !data.taskId || data.taskId === task.id) {
@@ -393,6 +432,7 @@ export default function StepsList() {
       unsubTaskError && unsubTaskError()
       unsubTaskStarted && unsubTaskStarted()
       window.removeEventListener('step-executing', handleStepExecuting)
+      window.removeEventListener('task-idle', handleTaskIdle)
     }
   }, [task.id])
 
@@ -464,7 +504,7 @@ export default function StepsList() {
       outputVariable: '',
       value: '',
       attrName: '',
-      description: '手动添加的等待步骤'
+      insertAfterId: activeStepId
     })
     setActiveStepId(null)
   }
@@ -580,7 +620,7 @@ export default function StepsList() {
       </div>
 
       {/* 步骤列表区 */}
-      <div className="flex justify-between items-center mb-2 px-1 mt-2">
+      <div className="flex justify-between items-center mb-2 mt-2">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>执行管线</h3>
           <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>共 {(task.steps || []).length} 步</span>
@@ -588,7 +628,7 @@ export default function StepsList() {
         <div className="relative" onMouseLeave={() => setIsTimeoutMenuOpen(false)}>
           <button 
             onClick={() => setIsTimeoutMenuOpen(!isTimeoutMenuOpen)}
-            className="text-xs px-2 h-[26px] flex items-center gap-1 rounded transition-colors border hover:opacity-80" 
+            className="text-xs px-2 h-[26px] flex items-center gap-1 rounded-md transition-colors border hover:opacity-80" 
             style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)' }}
             title="强制步进超时时间 (超过后强行跳过该步)"
           >
@@ -598,7 +638,7 @@ export default function StepsList() {
             className={`absolute right-0 top-full pt-1 w-32 transition-all z-10 ${isTimeoutMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
           >
             <div 
-              className="rounded shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-500/60 overflow-hidden"
+              className="rounded-md shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-500/60 overflow-hidden"
               style={{ backgroundColor: 'var(--bg-surface)' }}
             >
               {[
@@ -673,8 +713,8 @@ export default function StepsList() {
       </div>
 
       <div className="pt-3 border-t border-gray-800 shrink-0">
-        <button onClick={handleAddManualStep} className="w-full py-1.5 text-xs rounded border transition-colors opacity-80 hover:opacity-100" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
-          + 手动添加自定义步骤
+        <button onClick={handleAddManualStep} className="w-full py-1.5 text-xs rounded-md border transition-colors opacity-80 hover:opacity-100" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
+          {activeStepId ? '+ 在该步之后 手动添加步骤' : '+ 手动添加自定义步骤'}
         </button>
       </div>
     </div>

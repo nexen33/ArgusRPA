@@ -25,12 +25,14 @@ win:
   icon: build/logo.ico
 
 nsis:
+  shortcutName: "Argus"
   oneClick: false
   allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: true
   installerIcon: build/logo.ico
   uninstallerIcon: build/logo.ico
-  shortcutName: Argus
   include: build/installer.nsh
+  license: build/license.txt
 
 mac:
   category: public.app-category.productivity

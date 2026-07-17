@@ -5,6 +5,7 @@ interface ModalOptions {
   message: ReactNode;
   confirmText?: string;
   cancelText?: string;
+  icon?: ReactNode;
 }
 
 interface ModalContextType {
@@ -93,7 +94,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-1.5 rounded-xl overflow-hidden z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-[400px] border rounded-xl overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200" style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}>
             <div className="px-5 py-4 flex items-center gap-2 border-b relative" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-              <span className="text-xl">{type === 'alert' ? 'ℹ️' : '🛡️'}</span>
+              <span className="text-xl flex items-center justify-center">{options.icon || (type === 'alert' ? 'ℹ️' : '🛡️')}</span>
               <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{options.title}</span>
               <button 
                 onClick={() => handleClose(null)}

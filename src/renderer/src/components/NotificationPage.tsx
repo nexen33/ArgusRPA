@@ -346,7 +346,14 @@ export default function NotificationPage() {
                 ) : (
                   <>
                     <button
-                      onClick={() => setIsEditingKeywords(!isEditingKeywords)}
+                      onClick={() => {
+                        const nextState = !isEditingKeywords;
+                        setIsEditingKeywords(nextState);
+                        if (!nextState) {
+                          // Trigger save when closing
+                          handleSaveGlobal();
+                        }
+                      }}
                       className={`px-3 py-1 rounded-full text-xs border flex items-center gap-1.5 transition-all ${isEditingKeywords
                         ? 'bg-green-600 text-white border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]'
                         : 'bg-green-600/80 text-white border-green-500/50 hover:bg-green-600'
