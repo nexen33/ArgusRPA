@@ -8,14 +8,10 @@ Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pr
 
 <div align="center">
   <!-- Buy Me a Coffee (Global Users) -->
-  <a href="https://buymeacoffee.com/tunpama/extras" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 25px !important;width: 90px !important;" >
-  </a>
+  <a href="https://buymeacoffee.com/tunpama/extras" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 144px !important;"></a>
   &nbsp;&nbsp;&nbsp;&nbsp;
   <!-- Afdian (Mainland China Users) -->
-  <a href="https://ifdian.net/a/argus" target="_blank">
-    <img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="去爱发电赞助" style="height: 25px !important;width: 90px !important;">
-  </a>
+  <a href="https://ifdian.net/a/argus" target="_blank"><img src="https://pic1.afdiancdn.com/static/img/welcome/button-sponsorme.png" alt="去爱发电赞助" style="height: 40px !important;width: 144px !important;"></a>
 </div>
 
 <br/>
