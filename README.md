@@ -93,6 +93,11 @@ Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取
 ---
 
 <p align="center">
+  <!-- 这里放你刚生成的新图片链接 -->
+  <img width="7550" height="2160" alt="Image" src="https://github.com/user-attachments/assets/612142cc-2109-47d1-8560-5571ecea7286" />
+</p>
+
+<p align="center">
   <img width="7550" height="2160" alt="Image" src="https://github.com/user-attachments/assets/af46f871-6df4-4b43-b1b4-863f9b6dce31" />
 </p>
 
