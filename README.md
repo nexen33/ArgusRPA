@@ -52,6 +52,8 @@ Pre-built binaries for macOS and Windows are available in the [Releases](https:/
 - **macOS:** Download `Argus_Trial_Setup_2.0.0_x64.dmg` & `Argus_Trial_Setup_2.0.0_arm64.dmg`. 
 - **Windows:** Download `Argus_Trial_Setup_2.0.0.exe`.
 
+> 🔧 **macOS Troubleshooting:** If you encounter an "App is damaged and can't be opened" error, it is due to macOS Gatekeeper's quarantine restrictions on downloaded apps. To resolve this, open your `Terminal`, paste `sudo xattr -cr /Applications/Argus.app`, and hit Enter (you may need to input your Mac login password).
+
 ### ⚠️ Disclaimer
 Argus is provided "as-is" for educational and personal workflow automation purposes only. The user assumes all responsibility for adhering to the Terms of Service and `robots.txt` policies of the target websites. The author holds no liability for any misuse, account suspension, or legal disputes arising from the use of this software.
 
@@ -87,6 +89,8 @@ Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取
 - **macOS:** 下载 `Argus_Trial_Setup_2.0.0_x64.dmg` 或 `Argus_Trial_Setup_2.0.0_arm64.dmg`。
 - **Windows:** 下载 `Argus_Trial_Setup_2.0.0.exe`。
 
+> 🔧 **macOS 运行提示：** 若安装后打开时提示“App 已损坏，无法打开”，这是由于 macOS Gatekeeper 的安全隔离机制所致。请打开系统的 `终端 (Terminal)`，粘贴命令 `sudo xattr -cr /Applications/Argus.app` 并回车，输入开机密码后即可正常使用。
+
 ### ⚠️ 免责声明 (Disclaimer)
 本软件按“原样”提供，仅供个人学习、技术研究及合法的工作流自动化使用。用户在使用本软件时，必须严格遵守目标网站的《服务条款》(ToS) 及 `robots.txt` 爬虫协议。因滥用本软件（包括但不限于高频抓取、逆向破解等）导致的目标网站服务异常、账号封禁或任何相关法律纠纷，软件开发者不承担任何直接或连带法律责任。
 
@@ -94,11 +98,11 @@ Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取
 
 <p align="center">
   <!-- 这里放你刚生成的新图片链接 -->
-  <img width="7550" height="2230" alt="Image" src="https://github.com/user-attachments/assets/612142cc-2109-47d1-8560-5571ecea7286" />
+  <img width="7550" height="2250" alt="Image" src="https://github.com/user-attachments/assets/612142cc-2109-47d1-8560-5571ecea7286" />
 </p>
 
 <p align="center">
-  <img width="7550" height="2230" alt="Image" src="https://github.com/user-attachments/assets/af46f871-6df4-4b43-b1b4-863f9b6dce31" />
+  <img width="7550" height="2250" alt="Image" src="https://github.com/user-attachments/assets/af46f871-6df4-4b43-b1b4-863f9b6dce31" />
 </p>
 
 
