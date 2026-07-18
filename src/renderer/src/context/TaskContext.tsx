@@ -3,9 +3,9 @@ import { ScraperTask, ScraperStep } from '../../../shared/types';
 
 interface TaskContextType {
   task: Partial<ScraperTask>;
-  updateTask: (updates: Partial<ScraperTask>) => void;
+  updateTask: (updates: Partial<ScraperTask> | ((prev: Partial<ScraperTask>) => Partial<ScraperTask>)) => void;
   loadTask: (task: ScraperTask) => void;
-  resetTask: () => void;
+  resetTask: (taskType?: 'desktop' | 'web') => void;
   isPickerMode: boolean;
   setIsPickerMode: (val: boolean) => void;
   activeStepId: string | null;
@@ -45,8 +45,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const updateTask = (updates: Partial<ScraperTask>) => {
-    setTask(prev => ({ ...prev, ...updates }));
+  const updateTask = (updates: Partial<ScraperTask> | ((prev: Partial<ScraperTask>) => Partial<ScraperTask>)) => {
+    setTask(prev => {
+      const resolved = typeof updates === 'function' ? updates(prev) : updates;
+      return { ...prev, ...resolved };
+    });
   };
 
   const removeStep = (id: string) => {
@@ -87,12 +90,13 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const resetTask = () => {
+  const resetTask = (taskType?: 'desktop' | 'web') => {
     setTask({
       id: Math.random().toString(36).substring(2, 10),
       name: '',
       targetUrl: '',
       createdAt: Date.now(),
+      taskType: taskType,
       steps: []
     });
     setIsPickerMode(false);

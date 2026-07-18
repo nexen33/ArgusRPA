@@ -1,13 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { LayoutDashboard, Trash2, Edit, Play, Square, Copy, Download, Upload, Plus, GripVertical, Lock, Unlock } from 'lucide-react'
+import { LayoutDashboard, Trash2, Edit, Play, Square, Copy, Download, Upload, Plus, GripVertical, Lock, Unlock, ListTodo } from 'lucide-react'
 import { useTask } from '../context/TaskContext'
 import { useModal } from '../context/ModalContext'
 import { ScraperTask } from '../../../shared/types'
 
-export default function TaskList({ onNavigate }: { onNavigate: (page: 'configurator') => void }) {
+export default function TaskList({ onNavigate }: { onNavigate: (page: any) => void }) {
   const { loadTask, task: activeTask, resetTask } = useTask()
   const modal = useModal()
   const [tasks, setTasks] = useState<ScraperTask[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTasks, setActiveTasks] = useState<Set<string>>(new Set())
   const [isExporting, setIsExporting] = useState(false)
   const [exportSelection, setExportSelection] = useState<Set<string>>(new Set())
@@ -20,9 +21,25 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
   const [isSortLocked, setIsSortLocked] = useState(true)
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null)
   const [draggingCol, setDraggingCol] = useState<string | null>(null)
-  
+
+  const [activeTab, setActiveTab] = useState<'web' | 'desktop'>(() => {
+    return (sessionStorage.getItem('argus-task-list-tab') as 'web' | 'desktop') || 'web'
+  })
+
   useEffect(() => {
-    return () => setIsSortLocked(true)
+    sessionStorage.setItem('argus-task-list-tab', activeTab)
+    if (activeTab === 'desktop') {
+      document.body.classList.add('theme-desktop')
+    } else {
+      document.body.classList.remove('theme-desktop')
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('theme-desktop')
+      setIsSortLocked(true)
+    }
   }, [])
 
   const [colWidths, setColWidths] = useState(() => {
@@ -63,7 +80,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
         else if (col === 'steps' || col === 'monitor') maxW = 140;
         else if (col === 'batch' || col === 'schedule') maxW = 180;
         else if (col === 'notify' || col === 'created' || col === 'run') maxW = 240;
-        
+
         setColWidths((prev: any) => ({
           ...prev,
           [col]: Math.min(maxW, Math.max(minW, startWidth + (moveEvent.clientX - startX)))
@@ -82,24 +99,22 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
   }
 
   const fetchTasks = async () => {
-    // @ts-ignore
-    if (window.electronAPI) {
-      // @ts-ignore
-      const res = await window.electronAPI.getAllTasks()
-      setTasks(res?.data || [])
-
-      // @ts-ignore
-      if (window.electronAPI.getAllNotificationConfigs) {
-        // @ts-ignore
-        const confs = await window.electronAPI.getAllNotificationConfigs()
-        setNotificationConfigs(confs?.data || [])
-      }
+    const api = (window as any).electronAPI
+    if (api) {
+      const [tasksRes, confsRes] = await Promise.all([
+        api.getAllTasks(),
+        api.getAllNotificationConfigs ? api.getAllNotificationConfigs() : Promise.resolve({data: []})
+      ])
+      
+      setTasks(tasksRes?.data || [])
+      setNotificationConfigs(confsRes?.data || [])
     }
+    setLoading(false)
   }
 
   useEffect(() => {
     fetchTasks()
-    
+
     const handleTaskSaved = (e: any) => {
       if (e.detail) {
         setHighlightedTaskId(e.detail)
@@ -108,7 +123,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       }
     }
     window.addEventListener('task-saved', handleTaskSaved)
-    
+
     const checkActive = async () => {
       // @ts-ignore
       if (window.electronAPI && window.electronAPI.getActiveTasks) {
@@ -123,7 +138,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     }
     checkActive()
     const timer = setInterval(checkActive, 1000)
-    
+
     const handleTaskComplete = (data: any) => {
       fetchTasks() // 实时刷新任务最后运行时间
       if (data?.error || data?.skippedSteps?.length > 0) {
@@ -145,16 +160,45 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       removeTaskCompleteListener = window.electronAPI.onTaskComplete(handleTaskComplete)
     }
 
+    // @ts-ignore
+    let removeTasksUpdatedListener: (() => void) | undefined;
+    // @ts-ignore
+    if (window.electronAPI && window.electronAPI.onTasksUpdated) {
+      // @ts-ignore
+      removeTasksUpdatedListener = window.electronAPI.onTasksUpdated(() => {
+        fetchTasks()
+      })
+    }
+
     return () => {
       clearInterval(timer)
       window.removeEventListener('task-saved', handleTaskSaved)
       if (removeTaskCompleteListener) removeTaskCompleteListener()
+      if (removeTasksUpdatedListener) removeTasksUpdatedListener()
     }
   }, [])
 
   const handleEdit = (t: ScraperTask) => {
     loadTask(t)
-    onNavigate('configurator')
+
+    const isExplicitWeb = t.taskType === 'web';
+    const isExplicitDesktop = t.taskType === 'desktop';
+
+    let isDesktop = false;
+    if (isExplicitDesktop) isDesktop = true;
+    else if (isExplicitWeb) isDesktop = false;
+    else {
+      if (t.steps && t.steps.length > 0) {
+        isDesktop = t.steps.some((s: any) =>
+          s.controlType || s.className || s.automationId || s.elementName || s.processName || s.appPath ||
+          ['imageMatch', 'systemSearch', 'windowControl', 'sendWin32Message', 'launchApp', 'closeApp'].includes(s.type)
+        );
+      } else {
+        isDesktop = !t.targetUrl;
+      }
+    }
+
+    onNavigate(isDesktop ? 'configurator_desktop' : 'configurator')
   }
 
   const handleDelete = async (id: string) => {
@@ -201,7 +245,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     // escape regex characters in task name
     const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const regex = new RegExp(`^${escapeRegExp(t.name)}-副本(\\d+)$`)
-    
+
     let maxN = 0
     tasks.forEach(task => {
       const match = task.name.match(regex)
@@ -209,19 +253,20 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
         maxN = Math.max(maxN, parseInt(match[1], 10))
       }
     })
-    
+
     const newName = `${t.name}-副本${maxN + 1}`
 
     const newTask = {
       ...t,
       id: Math.random().toString(36).substring(2, 10),
       name: newName,
+      taskType: t.taskType,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       lastRunAt: undefined,
       scheduleEnabled: false // 安全起见，复制出来的任务默认关闭定时
     }
-    
+
     // @ts-ignore
     await window.electronAPI.saveTask(newTask)
     fetchTasks()
@@ -237,20 +282,20 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       pressTimers.current[t.id] = setTimeout(async () => {
         longPressFired.current[t.id] = true
         delete pressTimers.current[t.id]
-        
+
         // (不再因为强制终止而关闭定时，保持用户的定时设定)
 
         // 2. Force stop foreground
         // @ts-ignore
         await window.electronAPI.stopTask()
-        
+
         // 3. Force clear tracking and forcefully destroy background view
         // @ts-ignore
         if (window.electronAPI.forceClearActiveTask) {
           // @ts-ignore
           await window.electronAPI.forceClearActiveTask(t.id)
         }
-        
+
         setActiveTasks(prev => {
           const next = new Set(prev)
           next.delete(t.id)
@@ -271,7 +316,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       clearTimeout(pressTimers.current[t.id])
       delete pressTimers.current[t.id]
     }
-    
+
     handleToggleSchedule(t)
   }
 
@@ -356,7 +401,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     e.preventDefault()
     setDragOverTaskId(null)
     if (isSortLocked) return
-    
+
     const sourceId = e.dataTransfer.getData('text/plain')
     if (!sourceId || sourceId === targetId) return
 
@@ -367,15 +412,42 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
     const newTasks = [...tasks]
     const [movedTask] = newTasks.splice(sourceIndex, 1)
     newTasks.splice(targetIndex, 0, movedTask)
-    
+
     setTasks(newTasks)
-    
+
     // @ts-ignore
     if (window.electronAPI && window.electronAPI.updateTasksOrder) {
       // @ts-ignore
       await window.electronAPI.updateTasksOrder(newTasks.map(t => t.id))
     }
   }
+
+  const isTaskDesktop = (t: ScraperTask) => {
+    const isExplicitWeb = t.taskType === 'web';
+    const isExplicitDesktop = t.taskType === 'desktop';
+
+    let isDesktop = false;
+    if (isExplicitDesktop) isDesktop = true;
+    else if (isExplicitWeb) isDesktop = false;
+    else {
+      // Guess based on content
+      if (t.steps && t.steps.length > 0) {
+        isDesktop = t.steps.some((s: any) =>
+          s.controlType || s.className || s.automationId || s.elementName || s.processName || s.appPath ||
+          ['imageMatch', 'systemSearch', 'windowControl', 'sendWin32Message', 'launchApp', 'closeApp'].includes(s.type)
+        );
+      } else {
+        // No steps, guess based on targetUrl
+        isDesktop = !t.targetUrl;
+      }
+    }
+    return isDesktop;
+  }
+
+  const filteredTasks = tasks.filter(t => {
+    const isDesktop = isTaskDesktop(t);
+    return activeTab === 'desktop' ? isDesktop : !isDesktop;
+  })
 
   return (
     <div className="flex-1 flex flex-col bg-darkBg h-full overflow-hidden">
@@ -409,19 +481,46 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       <div className="pr-3 pt-6 pb-4 flex items-center justify-between" style={{ paddingLeft: '32px', WebkitAppRegion: 'drag' } as any}>
         <div>
           <h1 className="text-2xl font-bold text-gray-200 flex items-center gap-2">
-            <LayoutDashboard className="text-primary" />
+            <ListTodo size={28} className="text-primary" />
             已有任务列表
           </h1>
           <p className="text-gray-500 text-sm mt-1">管理您所有的自动化爬虫编排任务</p>
         </div>
-        <div className="flex gap-2 relative z-10" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <div className="flex gap-2 relative z-10 items-center" style={{ WebkitAppRegion: 'no-drag' } as any}>
+          {/* Web/Desktop Toggle */}
+          <div className="flex items-center bg-gray-900 rounded-lg p-1 mr-4 border border-gray-800 shadow-inner relative w-[136px]">
+            <div
+              className={`absolute top-1 bottom-1 w-[60px] rounded-md shadow-md transition-all duration-300 ease-out ${activeTab === 'web'
+                  ? 'translate-x-0'
+                  : 'translate-x-[64px] bg-violet-500'
+                }`}
+              style={activeTab === 'web' ? { backgroundColor: 'hsl(217, 81%, 60%)' } : {}}
+            />
+            <button
+              onClick={() => setActiveTab('web')}
+              className={`w-[60px] relative z-10 py-1.5 text-sm font-bold rounded-md transition-colors duration-300 ${activeTab === 'web'
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+                }`}
+            >
+              网页
+            </button>
+            <button
+              onClick={() => setActiveTab('desktop')}
+              className={`w-[60px] relative z-10 py-1.5 text-sm font-bold rounded-md transition-colors duration-300 ml-1 ${activeTab === 'desktop'
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+                }`}
+            >
+              桌面
+            </button>
+          </div>
           <button
             onClick={() => setIsSortLocked(!isSortLocked)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 border ${
-              isSortLocked 
-                ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/20' 
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95 border ${isSortLocked
+                ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/20'
                 : 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/20'
-            } mr-2`}
+              } mr-2`}
           >
             {isSortLocked ? <Lock size={15} strokeWidth={2.5} /> : <Unlock size={15} strokeWidth={2.5} />}
             {isSortLocked ? '排序锁定' : '排序解锁'}
@@ -461,8 +560,8 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
           </button>
           <button
             onClick={() => {
-              resetTask()
-              onNavigate('configurator')
+              resetTask(activeTab)
+              onNavigate(activeTab === 'desktop' ? 'configurator_desktop' : 'configurator')
             }}
             className="flex items-center gap-2 bg-primary/20 hover:bg-primary/30 text-primary dark:text-white border border-primary/30 dark:border-slate-500/60 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm active:scale-95 ml-2"
           >
@@ -550,7 +649,7 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
         </div>
 
         {/* Body container */}
-        <div 
+        <div
           className="overflow-y-auto overflow-x-auto thin-scrollbar flex-1 min-h-0"
           onScroll={(e) => {
             const isScrolled = e.currentTarget.scrollTop > 0;
@@ -575,9 +674,9 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
               <col style={{ width: colWidths.actions }} />
             </colgroup>
             <tbody>
-              {tasks.map((t, index) => (
-                <tr 
-                  key={t.id} 
+              {filteredTasks.map((t, index) => (
+                <tr
+                  key={t.id}
                   draggable={!isSortLocked}
                   onDragStart={(e) => handleDragStart(e, t.id)}
                   onDragOver={(e) => handleDragOver(e, t.id)}
@@ -596,14 +695,13 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                         onMouseDown={() => handleMouseDown(t)}
                         onMouseUp={() => handleMouseUp(t)}
                         onMouseLeave={() => handleMouseLeave(t)}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                            activeTasks.has(t.id) 
-                            ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)] animate-pulse' 
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${activeTasks.has(t.id)
+                            ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)] animate-pulse'
                             : errorFlashing.has(t.id)
-                            ? 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.3)] animate-pulse'
-                            : (t.scheduleConfigured && t.scheduleEnabled)
-                            ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                            : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700 hover:text-gray-200 shadow-sm'
+                              ? 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.3)] animate-pulse'
+                              : (t.scheduleConfigured && t.scheduleEnabled)
+                                ? 'bg-green-500/20 text-emerald-500 hover:bg-green-500/30 border border-green-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border border-gray-700 hover:text-gray-200 shadow-sm'
                           }`}
                         title={activeTasks.has(t.id) ? '任务正在执行中...' : errorFlashing.has(t.id) ? '任务刚中止或发生错误' : (t.scheduleConfigured && t.scheduleEnabled) ? '停止定时调度' : '启动'}
                       >
@@ -619,8 +717,8 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                   </td>
                   <td className="px-3 py-4 text-center">
                     {t.batchParam?.enabled ? (
-                      <span 
-                        className="inline-block px-2.5 py-1 text-xs rounded font-mono border" 
+                      <span
+                        className="inline-block px-2.5 py-1 text-xs rounded font-mono border"
                         title="并发数量"
                         style={{ backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--border)' }}
                       >
@@ -634,18 +732,18 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                     {!t.scheduleConfigured ? (
                       <span className="text-sm" style={{ color: 'var(--text-muted)' }}>未配置</span>
                     ) : t.scheduleType === 'frequency' && t.scheduleFrequency ? (
-                      <span 
+                      <span
                         className="inline-block px-2 py-1 font-bold border text-[11px] rounded shadow-sm"
-                        style={t.scheduleEnabled 
+                        style={t.scheduleEnabled
                           ? { backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)', borderColor: 'var(--border)' }
                           : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
                       >
                         每 {t.scheduleFrequency.value} {t.scheduleFrequency.unit === 'hours' ? '时' : t.scheduleFrequency.unit === 'minutes' ? '分' : '秒'}
                       </span>
                     ) : t.schedule && t.schedule.length > 0 ? (
-                      <span 
+                      <span
                         className="inline-block px-2 py-1 font-bold border text-[11px] rounded shadow-sm"
-                        style={t.scheduleEnabled 
+                        style={t.scheduleEnabled
                           ? { backgroundColor: 'var(--success-subtle)', color: 'var(--success)', borderColor: 'var(--border)' }
                           : { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-muted)', borderColor: 'var(--border)' }}
                       >
@@ -722,16 +820,24 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                   </td>
                 </tr>
               ))}
-              {tasks.length === 0 && (
+              {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-gray-500">
-                    <div className="flex flex-col items-center gap-2">
-                      <LayoutDashboard size={32} className="opacity-20" />
-                      <p>暂无任务，请前往配置器新建您的第一个自动化爬虫。</p>
+                  <td colSpan={9} className="border-none">
+                    <div className="flex items-center justify-center min-h-[50vh]">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-50"></div>
                     </div>
                   </td>
                 </tr>
-              )}
+              ) : filteredTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="border-none">
+                    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 text-gray-500 w-full">
+                      <LayoutDashboard size={40} className="opacity-20" />
+                      <p className="text-[14px]">暂无任务，请前往配置器新建您的第一个自动化爬虫。</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -740,37 +846,37 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
       {/* Export Modal */}
       {isExporting && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-300">
-          <div 
+          <div
             className="border rounded-2xl w-[500px] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
             style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }}
           >
-            <div 
+            <div
               className="p-5 pb-4 border-b flex justify-between items-center"
               style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
             >
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>批量导出任务</h2>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => setExportSelection(new Set(tasks.map(t => t.id)))}
                     className="text-xs px-2 py-1 rounded border transition-colors hover:opacity-80"
                     style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                   >
                     全选
                   </button>
-                  <button 
+                  <button
                     onClick={() => setExportSelection(new Set())}
                     className="text-xs px-2 py-1 rounded border transition-colors hover:opacity-80"
                     style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                   >
                     全不选
                   </button>
-                  <label 
+                  <label
                     className="text-xs px-2 py-1 rounded border transition-colors cursor-pointer flex items-center gap-1.5 hover:opacity-80 group"
                     style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
                   >
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="w-3 h-3 rounded"
                       checked={clearConfigsOnExport}
                       onChange={(e) => setClearConfigsOnExport(e.target.checked)}
@@ -781,51 +887,80 @@ export default function TaskList({ onNavigate }: { onNavigate: (page: 'configura
                 </div>
               </div>
               <button onClick={() => setIsExporting(false)} className="transition-colors hover:opacity-80" style={{ color: 'var(--text-muted)' }}>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            
+
             <div className="p-4 overflow-y-auto max-h-[50vh]" style={{ backgroundColor: 'var(--bg-main)' }}>
               <div className="space-y-1">
-                {tasks.map(t => (
-                  <label 
-                    key={t.id} 
+                {tasks.filter(t => !isTaskDesktop(t)).map(t => (
+                  <label
+                    key={t.id}
                     className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border border-transparent group hover:bg-black/5 dark:hover:bg-white/5"
                     style={{ color: 'var(--text-primary)' }}
                   >
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={exportSelection.has(t.id)}
                       onChange={() => toggleExportSelection(t.id)}
                       className="w-4 h-4 rounded focus:ring-offset-0"
-                      style={{ 
-                        accentColor: 'var(--accent)', 
-                        backgroundColor: 'var(--bg-surface)', 
-                        borderColor: 'var(--border)' 
+                      style={{
+                        accentColor: 'var(--accent)',
+                        backgroundColor: 'var(--bg-surface)',
+                        borderColor: 'var(--border)'
                       }}
                     />
                     <span className="flex-1 text-sm font-medium truncate opacity-90 group-hover:opacity-100">{t.name}</span>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.steps?.length || 0} 个步骤</span>
                   </label>
                 ))}
+
+                {tasks.some(t => isTaskDesktop(t)) && (
+                  <>
+                    <div className="my-3 py-2 border-y border-dashed border-black/10 dark:border-white/10 flex items-center">
+                      <div className="text-xs font-bold pl-3" style={{ color: 'var(--text-muted)', opacity: 0.8 }}>以下为桌面自动化任务</div>
+                    </div>
+                    {tasks.filter(t => isTaskDesktop(t)).map(t => (
+                      <label
+                        key={t.id}
+                        className="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border border-transparent group hover:bg-black/5 dark:hover:bg-white/5"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={exportSelection.has(t.id)}
+                          onChange={() => toggleExportSelection(t.id)}
+                          className="w-4 h-4 rounded focus:ring-offset-0"
+                          style={{
+                            accentColor: 'var(--accent)',
+                            backgroundColor: 'var(--bg-surface)',
+                            borderColor: 'var(--border)'
+                          }}
+                        />
+                        <span className="flex-1 text-sm font-medium truncate opacity-90 group-hover:opacity-100">{t.name}</span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.steps?.length || 0} 个步骤</span>
+                      </label>
+                    ))}
+                  </>
+                )}
                 {tasks.length === 0 && <div className="text-center py-8 text-sm" style={{ color: 'var(--text-muted)' }}>暂无任务</div>}
               </div>
             </div>
 
-            <div 
+            <div
               className="p-4 border-t flex justify-between items-center"
               style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
             >
               <div className="text-sm" style={{ color: 'var(--text-muted)' }}>已选择 <span className="font-bold" style={{ color: 'var(--accent)' }}>{exportSelection.size}</span> 个任务</div>
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => setIsExporting(false)}
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:opacity-80"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   取消
                 </button>
-                <button 
+                <button
                   onClick={confirmExport}
                   disabled={exportSelection.size === 0}
                   className="px-6 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:brightness-110 text-white"

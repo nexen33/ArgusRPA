@@ -1,4 +1,6 @@
 export { default as DomActionEditor } from './DomActionEditor'
 export { default as SystemActionEditor } from './SystemActionEditor'
 export { default as FlowActionEditor } from './FlowActionEditor'
+export { default as DesktopActionEditor } from './DesktopActionEditor'
+export { NetworkRequestEditor } from './NetworkRequestEditor'
 export * from './types'

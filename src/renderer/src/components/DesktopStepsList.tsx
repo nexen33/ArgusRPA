@@ -20,14 +20,14 @@ const getElementHint = (step: any) => {
     text = (step.innerText || '').trim();
   }
   if (!text) return '';
-  
+
   if (/%$/.test(text) && /\d/.test(text)) {
     text = text.replace(/\d/g, 'X');
   }
   if (/^-?[\d,.]+\.?\d*$/.test(text)) {
     text = text.replace(/\d/g, 'X');
   }
-  
+
   let isChinese = /[\u4e00-\u9fa5]/.test(text);
   let limit = isChinese ? 8 : 12;
   if (text.length > limit) {
@@ -65,7 +65,6 @@ function StepNode({
       case 'navigate': return <span className="text-cyan-400">访问网页</span>
       case 'calculate': return <span className="text-pink-400">变量运算</span>
       case 'assignVariable': return <span className="text-teal-400">文本植入</span>
-      case 'network_request_variable': return <span className="text-cyan-400">请求变量</span>
       case 'skipPopup': return <span className="text-amber-400">跳过弹窗</span>
       case 'if_else': return <span className="text-indigo-400">条件分支</span>
       case 'mouseMove': return <span className="text-lime-400">移动鼠标</span>
@@ -79,6 +78,14 @@ function StepNode({
       case 'goto': return <span className="text-violet-400">跳转步骤</span>
       case 'condition': return <span className="text-indigo-400">条件判断</span>
       case 'screenshot': return <span className="text-blue-400">网页截图</span>
+      case 'systemSearch': return <span className="text-fuchsia-400">系统搜索</span>
+      case 'windowControl': return <span className="text-indigo-400">窗口控制</span>
+      case 'sendWin32Message': return <span className="text-teal-400">系统消息</span>
+      case 'launchApp': return <span className="text-green-400">启动应用</span>
+      case 'closeApp': return <span className="text-red-400">关闭进程</span>
+      case 'imageMatch': return <span className="text-blue-400">截图选取</span>
+      case 'dragAndDrop': return <span className="text-purple-400">按住拖拽</span>
+      case 'readClipboard': return <span className="text-pink-400">读取剪贴板</span>
       default: return <span className="text-gray-300">未知操作</span>
     }
   }
@@ -95,10 +102,6 @@ function StepNode({
       case 'navigate': return `前往: ${step.value}`
       case 'calculate': return `运算: ${step.value} -> [${step.outputVariable}]`
       case 'assignVariable': return `存入: ${step.value} -> [${step.outputVariable}]`
-      case 'network_request_variable': {
-        const capsules = step.networkRequestConfig?.capsules || []
-        return capsules.length > 0 ? capsules.map((c: any) => c.hintName || '未命名').join(' / ') : '未配置提取字段'
-      }
       case 'skipPopup': return '自动检测并关闭覆盖弹窗'
       case 'if_else': return `判断: ${step.conditionVar || '?'} ${step.conditionOperator || '=='} ${step.conditionValue || '?'}`
       case 'mouseMove': return '移动到该元素上方'
@@ -112,6 +115,27 @@ function StepNode({
       case 'goto': return `目标 ID: ${step.gotoStepId ? step.gotoStepId.substring(0, 6) : '未配置'}`
       case 'condition': return `判断: ${step.conditionVar || '?'} ${step.conditionOperator || '=='} ${step.conditionValue || '?'}`
       case 'screenshot': return `截图路径: ${step.savePath || '默认目录'}`
+      case 'systemSearch': return `搜索: ${step.searchKeyword || '未配置'}`
+      case 'windowControl': {
+        let opStr = step.windowCommand === 'focus' ? '前置并激活' : step.windowCommand === 'minimize_others_restore' ? '独占显示' : step.windowCommand === 'close' ? '关闭窗口' : step.windowCommand === 'minimize' ? '最小化' : step.windowCommand === 'maximize' ? '最大化' : step.windowCommand === 'restore' ? '还原' : '无指令';
+        if (step.windowX !== undefined && step.windowY !== undefined && step.windowWidth !== undefined && step.windowHeight !== undefined) {
+          opStr += ` | 调整尺寸: (${step.windowX},${step.windowY},${step.windowWidth},${step.windowHeight})`;
+        }
+        return `操作: ${opStr}`;
+      }
+      case 'sendWin32Message': return `消息码: ${step.win32Message || '未配置'}`
+      case 'launchApp': return `路径: ${step.appPath || '未配置'}`
+      case 'closeApp': return `进程名: ${step.processName || '未配置'}`
+      case 'imageMatch': return `识别后操作: ${step.actionAfterMatch === 'hover' ? '鼠标悬停' : step.actionAfterMatch === 'rightClick' ? '右键单击' : step.actionAfterMatch === 'doubleClick' ? '双击元素' : '左键单击'}`
+      case 'dragAndDrop': {
+        const nx = Number(step.dragOffsetX) || 0;
+        const ny = Number(step.dragOffsetY) || 0;
+        let parts = [];
+        if (nx > 0) parts.push(`右移${nx}px`); else if (nx < 0) parts.push(`左移${Math.abs(nx)}px`);
+        if (ny > 0) parts.push(`下移${ny}px`); else if (ny < 0) parts.push(`上移${Math.abs(ny)}px`);
+        return `操作细节: ${parts.length > 0 ? parts.join(', ') : '原点拖拽(无偏移)'}`;
+      }
+      case 'readClipboard': return `存入变量: ${step.outputVariable || '未命名'}`
       default: return '未配置参数'
     }
   }
@@ -129,10 +153,10 @@ function StepNode({
     <div className="flex flex-col gap-2">
       <div
         className={`flex flex-col gap-2 ${isChild ? 'px-2 py-1' : 'px-3 py-1.5'} bg-gray-800/80 border rounded-lg group transition-colors select-none ${(isActive && !isTaskRunning) ? 'border-primary shadow-[0_0_15px_rgba(59,130,246,0.4)] animate-pulse bg-blue-900/20' :
-            (isActive && isTaskRunning) ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.2)] bg-amber-900/10' :
-              result?.success ? 'border-green-500/30 bg-green-900/10' :
-                result?.error ? 'border-red-500/30 bg-red-900/10' :
-                  'border-gray-700 hover:border-gray-500'
+          (isActive && isTaskRunning) ? 'border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.2)] bg-amber-900/10' :
+            result?.success ? 'border-green-500/30 bg-green-900/10' :
+              result?.error ? 'border-red-500/30 bg-red-900/10' :
+                'border-gray-700 hover:border-gray-500'
           }`}
         title={!isChild ? "双击进行编辑" : ""}
       >
@@ -162,7 +186,7 @@ function StepNode({
                 </span>
               )}
               <span className="text-gray-500 dark:text-[#b1b8c0] truncate block flex-1 font-normal" title={step.selector}>
-                {step.selector || '全局操作'}
+                {step.selector || (['imageMatch', 'launchApp', 'closeApp', 'windowControl', 'systemSearch', 'sendWin32Message'].includes(step.type) ? '系统操作' : (['click', 'input', 'pressKey', 'readText', 'readAttr', 'waitForSelector', 'mouseMove', 'condition', 'if_else', 'screenshot', 'dragAndDrop'].includes(step.type) ? '元素操作' : '全局操作'))}
               </span>
             </div>
             <div className="text-xs text-gray-300 truncate">
@@ -188,23 +212,37 @@ function StepNode({
             onClick={handleContinue}
             disabled={isExecuting}
             className={`w-full py-1.5 mt-1 text-white text-xs font-bold rounded shadow transition-all ${isExecuting
-                ? 'bg-blue-600/50 cursor-not-allowed animate-none'
-                : 'bg-primary hover:bg-blue-600 animate-none'
+              ? 'bg-blue-600/50 cursor-not-allowed animate-none'
+              : 'bg-primary hover:bg-blue-600 animate-none'
               }`}
           >
             {isExecuting ? '正在后台执行...' : '▶ 执行此步'}
           </button>
         )}
 
-        {result && (
-          <div className="text-xs bg-gray-900/50 py-1 px-2 rounded mt-0 overflow-hidden break-all" onDoubleClick={onEdit}>
-            {result.success ? (
-              <span className="text-green-400 font-mono font-bold">✅ 成功 {result.variables && Object.keys(result.variables).length > 0 ? `| 变量: ${JSON.stringify(result.variables)}` : ''}</span>
-            ) : (
-              <span className="text-red-400 font-mono font-bold">❌ 失败: {result.error}</span>
-            )}
-          </div>
-        )}
+        {result && (() => {
+          const translateError = (err: string) => {
+            if (!err) return '未知错误';
+            if (err.includes('Element or Ancestor not found')) return '未找到元素或其所在容器';
+            if (err.includes('Execute Timeout')) return '执行超时';
+            if (err.includes('Cancelled')) return '任务已取消';
+            if (err.includes('Process exited with code')) return '执行进程异常退出';
+            if (err.includes('Failed to traverse child path')) return '无法穿透或遍历至子元素';
+            if (err.includes('No selector provided')) return '未提供选择器';
+            if (err.includes('No valid properties to find element')) return '未提供可用于查找元素的有效属性';
+            if (err.includes('Click failed')) return '点击操作失败，可能被遮挡或不可见';
+            return err;
+          };
+          return (
+            <div className="text-xs bg-gray-900/50 py-1 px-2 rounded mt-0 overflow-hidden break-all" onDoubleClick={onEdit}>
+              {result.success ? (
+                <span className="text-green-400 font-mono font-bold">✅ 成功 {result.variables && Object.keys(result.variables).length > 0 ? `| 变量: ${JSON.stringify(result.variables)}` : ''}</span>
+              ) : (
+                <span className="text-red-400 font-mono font-bold">❌ 失败: {translateError(result.error || '')}</span>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* if_else 嵌套分支渲染 */}
@@ -253,11 +291,10 @@ function StepNode({
                 })
                 setActiveStepId(null)
               }}
-              className={`w-full py-1.5 rounded border border-dashed flex justify-center items-center transition-colors ${
-                activeDropzone?.parentId === step.id && activeDropzone?.branch === 'true'
-                  ? 'border-green-500 text-green-500 bg-green-500/10'
-                  : 'border-gray-700 text-gray-500 hover:border-green-500/50 hover:text-green-500/80 hover:bg-green-500/5'
-              }`}
+              className={`w-full py-1.5 rounded border border-dashed flex justify-center items-center transition-colors ${activeDropzone?.parentId === step.id && activeDropzone?.branch === 'true'
+                ? 'border-green-500 text-green-500 bg-green-500/10'
+                : 'border-gray-700 text-gray-500 hover:border-green-500/50 hover:text-green-500/80 hover:bg-green-500/5'
+                }`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14M5 12h14" />
@@ -308,11 +345,10 @@ function StepNode({
                 })
                 setActiveStepId(null)
               }}
-              className={`w-full py-1.5 rounded border border-dashed flex justify-center items-center transition-colors ${
-                activeDropzone?.parentId === step.id && activeDropzone?.branch === 'false'
-                  ? 'border-red-500 text-red-500 bg-red-500/10'
-                  : 'border-gray-700 text-gray-500 hover:border-red-500/50 hover:text-red-500/80 hover:bg-red-500/5'
-              }`}
+              className={`w-full py-1.5 rounded border border-dashed flex justify-center items-center transition-colors ${activeDropzone?.parentId === step.id && activeDropzone?.branch === 'false'
+                ? 'border-red-500 text-red-500 bg-red-500/10'
+                : 'border-gray-700 text-gray-500 hover:border-red-500/50 hover:text-red-500/80 hover:bg-red-500/5'
+                }`}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14M5 12h14" />
@@ -327,29 +363,22 @@ function StepNode({
 
 function SortableStep(props: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.step.id })
-  const style = { 
-    transform: CSS.Translate.toString(transform), 
+  const style = {
+    transform: CSS.Translate.toString(transform),
     transition,
     ...(isDragging ? { zIndex: 9999, position: 'relative' as const } : {})
   }
-  
+
   return (
     <div ref={setNodeRef} style={style}>
-      <StepNode {...props} dragHandleProps={{...attributes, ...listeners}} />
+      <StepNode {...props} dragHandleProps={{ ...attributes, ...listeners }} />
     </div>
   )
 }
 
-export default function StepsList() {
+export default function DesktopStepsList() {
   const { task, updateTask, removeStep, isDebugMode, setIsDebugMode, resetTask, setPendingStep, activeStepId, setActiveStepId, visitedUrls, setActiveDropzone } = useTask()
   const modal = useModal()
-  const [showUrlHistory, setShowUrlHistory] = useState(false)
-
-  const insertParam = () => {
-    if (task.batchParam?.paramName) {
-      updateTask({ targetUrl: (task.targetUrl || '') + `{{${task.batchParam.paramName}}}` })
-    }
-  }
 
   const [executingStepId, setExecutingStepId] = useState<string | null>(null)
   const [stepResults, setStepResults] = useState<Record<string, { success: boolean; variables?: any; error?: string }>>({})
@@ -468,12 +497,7 @@ export default function StepsList() {
       return
     }
 
-    if (!task.targetUrl || task.targetUrl.trim() === '') {
-      modal.toast('目标URL输入为空，无法保存任务，请输入或选择URL')
-      return
-    }
-
-    let taskToSave = { ...task };
+    let taskToSave = { ...task, taskType: 'desktop' };
     let hasFreqWarning = false;
     if (taskToSave.scheduleConfigured && taskToSave.scheduleType === 'frequency') {
       const val = taskToSave.scheduleFrequency?.value;
@@ -503,27 +527,10 @@ export default function StepsList() {
     }
   }
 
-  const handleAddManualStep = () => {
-    setActiveDropzone(null)
-    setPendingStep({
-      id: Math.random().toString(36).substring(2, 10),
-      type: 'waitTimer',
-      selector: '',
-      selectorXPath: '',
-      tagName: '',
-      innerText: '',
-      outputVariable: '',
-      value: '',
-      attrName: '',
-      insertAfterId: activeStepId
-    })
-    setActiveStepId(null)
-  }
-
   return (
     <div className="h-full flex flex-col">
       {/* 顶部工具栏区 */}
-      <div className="flex-none mb-4 pb-0 flex gap-3">
+      <div className="flex-none mb-0 pb-0 flex gap-3">
         <div className="flex-1 flex items-center">
           <input
             type="text"
@@ -540,8 +547,8 @@ export default function StepsList() {
           <button
             onClick={() => setIsDebugMode(!isDebugMode)}
             className={`px-6 py-1.5 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 border ${isDebugMode
-                ? 'bg-amber-500/20 text-amber-600 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
-                : 'bg-gray-800 border-gray-700 text-gray-300 hover:opacity-80'
+              ? 'bg-amber-500/20 text-amber-600 border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]'
+              : 'bg-gray-800 border-gray-700 text-gray-300 hover:opacity-80'
               }`}
             style={!isDebugMode ? { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' } : undefined}
             title="开启单步调试模式，引擎执行时将在每步前暂停"
@@ -560,96 +567,29 @@ export default function StepsList() {
         </div>
       </div>
 
-      {/* 目标网页 URL 移植区 */}
-      <div className="relative bg-gray-900/40 border border-gray-700 rounded-lg p-3 flex flex-col gap-2 mb-1 shrink-0" style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}>
-        <label className="text-xs font-bold flex items-center justify-between" style={{ color: 'var(--text-secondary)' }}>
-          <span className="flex items-center gap-1.5">🌐 目标网页 URL</span>
-          <div className="flex items-center gap-3">
-            {task.batchParam?.enabled && task.batchParam.paramName && (
-              <span
-                className="text-[11px] cursor-pointer hover:underline"
-                style={{ color: 'var(--accent)' }}
-                onClick={insertParam}
-              >
-                插入变量 {'{{'}{task.batchParam.paramName}{'}}'}
-              </span>
-            )}
-            <div>
-              <button
-                onClick={() => setShowUrlHistory(!showUrlHistory)}
-                className="text-[11px] hover:opacity-80 flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors font-medium"
-                style={{ color: 'var(--text-muted)' }}
-                title="查看访问过的历史 URL"
-              >
-                历史记录 ▼
-              </button>
-            </div>
-          </div>
-        </label>
-        <input
-          type="text"
-          placeholder="支持 {{变量名}} 语法"
-          className="text-xs px-2.5 py-1.5 rounded-lg outline-none border focus:border-primary w-full"
-          style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', borderColor: 'var(--border)' }}
-          value={task.targetUrl || ''}
-          onChange={e => updateTask({ targetUrl: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && task.targetUrl) {
-              e.preventDefault();
-              let navUrl = task.targetUrl;
-              if (!navUrl.startsWith('http')) {
-                navUrl = 'https://' + navUrl;
-              }
-              // @ts-ignore
-              window.electronAPI.navigateBrowser(navUrl);
-            }
-          }}
-        />
-
-        {showUrlHistory && (
-          <div className="absolute top-[calc(100%+4px)] left-0 right-0 rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.25)] z-50 max-h-48 overflow-y-auto border border-cyan-500/60" style={{ backgroundColor: 'var(--bg-panel)' }}>
-            {visitedUrls.length === 0 ? (
-              <div className="p-2 text-[11px] text-center font-normal" style={{ color: 'var(--text-muted)' }}>暂无访问记录</div>
-            ) : (
-              visitedUrls.map((url, idx) => (
-                <div
-                  key={idx}
-                  className="px-3 py-2 text-[11px] cursor-pointer truncate transition-colors border-b last:border-0 font-normal hover:opacity-80"
-                  style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-subtle)' }}
-                  onClick={() => {
-                    updateTask({ targetUrl: url })
-                    setShowUrlHistory(false)
-                  }}
-                  title={url}
-                >
-                  {url}
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
+      {/* 紫线位置虚线分割线 */}
+      <div className="border-t border-dashed border-gray-300 dark:border-gray-700 w-full my-4 shrink-0"></div>
 
       {/* 步骤列表区 */}
-      <div className="flex justify-between items-center mb-2 mt-2">
+      <div className="flex justify-between items-center mt-0 mb-2">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-sm" style={{ color: 'var(--text-secondary)' }}>执行管线</h3>
           <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>共 {(task.steps || []).length} 步</span>
         </div>
         <div className="relative" onMouseLeave={() => setIsTimeoutMenuOpen(false)}>
-          <button 
+          <button
             onClick={() => setIsTimeoutMenuOpen(!isTimeoutMenuOpen)}
-            className="text-xs px-2 h-[26px] flex items-center gap-1 rounded-md transition-colors border hover:opacity-80" 
+            className="text-xs px-2 h-[26px] flex items-center gap-1 rounded-md transition-colors border hover:opacity-80"
             style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-main)', borderColor: 'var(--border)' }}
             title="强制步进超时时间 (超过后强行跳过该步)"
           >
             {task.timeoutSeconds ? `${task.timeoutSeconds}s 强制步进` : '不限时'} <ChevronDown size={12} />
           </button>
-          <div 
-            className={`absolute right-0 top-full pt-1 w-32 transition-all z-10 ${isTimeoutMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
+          <div
+            className={`absolute right-0 top-full pt-1 w-32 transition-all z-10 ${isTimeoutMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
           >
-            <div 
-              className="rounded-md shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-500/60 overflow-hidden"
+            <div
+              className="rounded-md shadow-[0_0_15px_rgba(168,85,247,0.4)] border border-purple-500/60 overflow-hidden"
               style={{ backgroundColor: 'var(--bg-surface)' }}
             >
               {[
@@ -662,12 +602,12 @@ export default function StepsList() {
                 { label: '120秒强制步进', value: 120 },
                 { label: '180秒强制步进', value: 180 },
               ].map(opt => (
-                <button 
+                <button
                   key={opt.value}
                   onClick={() => {
                     updateTask({ timeoutSeconds: opt.value })
                     setIsTimeoutMenuOpen(false)
-                  }} 
+                  }}
                   className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${task.timeoutSeconds === opt.value ? 'bg-black/20 font-bold' : 'hover:bg-black/10 dark:hover:bg-white/5'}`}
                   style={{ color: task.timeoutSeconds === opt.value ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                 >
@@ -721,12 +661,6 @@ export default function StepsList() {
             </SortableContext>
           </DndContext>
         )}
-      </div>
-
-      <div className="pt-3 border-t border-gray-800 shrink-0">
-        <button onClick={handleAddManualStep} className="w-full py-1.5 text-xs rounded-md border transition-colors opacity-80 hover:opacity-100" style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}>
-          {activeStepId ? '+ 在该步之后 手动添加步骤' : '+ 手动添加自定义步骤'}
-        </button>
       </div>
     </div>
   )

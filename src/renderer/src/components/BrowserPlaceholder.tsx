@@ -19,8 +19,12 @@ export default function BrowserPlaceholder() {
       // @ts-ignore
       if (!window.electronAPI) return;
       
-      // Ignore 0x0 size which happens when window is minimized
-      if (rect.width === 0 && rect.height === 0) return;
+      // Handle 0x0 size which happens when window is minimized or when tab is hidden via display:none
+      if (rect.width === 0 && rect.height === 0) {
+        // @ts-ignore
+        window.electronAPI.updateBrowserBounds({ x: -9999, y: -9999, width: 0, height: 0 })
+        return;
+      }
 
       if (!targetUrlRef.current && visitedUrlsRef.current.length === 0) {
         // @ts-ignore

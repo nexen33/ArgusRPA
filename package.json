@@ -1,28 +1,36 @@
 {
   "name": "argus",
-  "version": "1.6.5",
+  "version": "2.0.0",
   "description": "Argus RPA",
   "author": "Yutao Guo",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "predev": "pnpm run build:cs:dev",
+    "dev": "chcp 65001 >nul && electron-vite dev",
+    "build:cs:dev": "dotnet build src/main/uia/DesktopAutomationRunner.csproj -c Debug -o out/main/uia",
+    "build:cs": "dotnet publish src/main/uia/DesktopAutomationRunner.csproj -c Release -r win-x64 -o out/main/uia",
+    "build": "electron-vite build && pnpm run build:cs",
     "start": "electron-vite preview",
-    "build:win": "electron-vite build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:all": "electron-vite build && electron-builder --mac --win",
-    "build:win:free": "electron-vite build && tsx scripts/protect.ts && electron-builder --win -c.artifactName=\"Argus_Free_Setup_${version}.${ext}\"",
-    "build:mac:free": "electron-vite build && tsx scripts/protect.ts && electron-builder --mac -c.artifactName=\"Argus_Free_Setup_${version}.${ext}\"",
-    "build:win:pro": "electron-vite build && tsx scripts/protect.ts --pro && electron-builder --win -c.artifactName=\"Argus_Pro_Setup_${version}.${ext}\"",
-    "build:mac:pro": "electron-vite build && tsx scripts/protect.ts --pro && electron-builder --mac -c.artifactName=\"Argus_Pro_Setup_${version}.${ext}\"",
+    "build:win": "electron-vite build && pnpm run build:cs && electron-builder --win",
+    "build:mac": "electron-vite build && pnpm run build:cs && electron-builder --mac",
+    "build:all": "electron-vite build && pnpm run build:cs && electron-builder --mac --win",
+    "build:win:free": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts && electron-builder --win -c.artifactName=\"Argus_Free_Setup_${version}.${ext}\"",
+    "build:mac:free": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts && electron-builder --mac -c.artifactName=\"Argus_Free_Setup_${version}.${ext}\"",
+    "build:win:pro": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --pro && electron-builder --win -c.artifactName=\"Argus_Pro_Setup_${version}.${ext}\"",
+    "build:mac:pro": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --pro && electron-builder --mac -c.artifactName=\"Argus_Pro_Setup_${version}.${ext}\"",
+    "build:win:trial": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --trial && electron-builder --win -c.artifactName=\"Argus_Trial_Setup_${version}.${ext}\"",
+    "build:mac:trial": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --trial && electron-builder --mac -c.artifactName=\"Argus_Trial_Setup_${version}.${ext}\"",
+    "build:win:monat": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --monat && electron-builder --win -c.artifactName=\"Argus_Monat_Setup_${version}.${ext}\"",
+    "build:mac:monat": "electron-vite build && pnpm run build:cs && tsx scripts/protect.ts --monat && electron-builder --mac -c.artifactName=\"Argus_Monat_Setup_${version}.${ext}\"",
     "keygen": "tsx tools/sign-license.ts",
     "licenses": "tsx tools/sign-license.ts --list"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.0",
+    "bytenode": "^1.5.0",
     "sql.js": "^1.11.0",
     "systeminformation": "^5.23.11",
-    "bytenode": "^1.5.0"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -57,8 +65,8 @@
     "recharts": "^3.8.1",
     "tailwindcss": "^3.4.3",
     "tesseract.js": "^7.0.0",
-    "typescript": "^5.4.5",
     "tsx": "^4.15.1",
+    "typescript": "^5.4.5",
     "vite": "^5.2.11",
     "xlsx": "^0.18.5"
   }

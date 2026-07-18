@@ -23,42 +23,28 @@ export default function SettingsPage() {
   useEffect(() => {
     // Load initial settings
     const loadSettings = async () => {
-      // @ts-ignore
-      if (window.electronAPI) {
-        // @ts-ignore
-        const alRes = await window.electronAPI.getAutoLaunch()
-        if (alRes.success) setAutoLaunch(alRes.data)
+      const api = (window as any).electronAPI
+      if (api) {
+        const [alRes, themeRes, hlRes, hwRes, clRes, vRes, pathRes, drivesRes, licRes] = await Promise.all([
+          api.getAutoLaunch(),
+          api.getTheme(),
+          api.getHeadlessMode(),
+          api.toggleHardwareAcceleration ? api.getHardwareAcceleration() : Promise.resolve({success:false}),
+          api.readChangelog(),
+          api.getVersion(),
+          api.getArgusIssuePath ? api.getArgusIssuePath() : Promise.resolve(null),
+          api.getHasOtherDrives ? api.getHasOtherDrives() : Promise.resolve(null),
+          api.getLicenseInfo ? api.getLicenseInfo() : Promise.resolve(null)
+        ])
 
-        // @ts-ignore
-        const themeRes = await window.electronAPI.getTheme()
-        if (themeRes.success) setTheme(themeRes.data)
-
-        // @ts-ignore
-        const hlRes = await window.electronAPI.getHeadlessMode()
-        if (hlRes.success) setHeadlessMode(hlRes.data)
-
-        // @ts-ignore
-        const hwRes = await window.electronAPI.getHardwareAcceleration()
-        if (hwRes.success) setHardwareAcceleration(hwRes.data)
-
-        // @ts-ignore
-        const clRes = await window.electronAPI.readChangelog()
-        if (clRes.success) setChangelog(clRes.data)
-
-        // @ts-ignore
-        const vRes = await window.electronAPI.getVersion()
-        if (vRes.success) setVersion(vRes.data)
-
-        // @ts-ignore
-        const pathRes = await window.electronAPI.getArgusIssuePath?.()
+        if (alRes?.success) setAutoLaunch(alRes.data)
+        if (themeRes?.success) setTheme(themeRes.data)
+        if (hlRes?.success) setHeadlessMode(hlRes.data)
+        if (hwRes?.success) setHardwareAcceleration(hwRes.data)
+        if (clRes?.success) setChangelog(clRes.data)
+        if (vRes?.success) setVersion(vRes.data)
         if (pathRes?.success) setArgusIssuePath(pathRes.data)
-
-        // @ts-ignore
-        const drivesRes = await window.electronAPI.getHasOtherDrives?.()
         if (drivesRes?.success) setHasOtherDrives(drivesRes.data)
-
-        // @ts-ignore
-        const licRes = await window.electronAPI.getLicenseInfo?.()
         if (licRes) setLicenseInfo(licRes)
       }
       setLoading(false)
@@ -124,6 +110,22 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ backgroundColor: 'var(--bg-main)' }}>
+      <style>{`
+        @keyframes fadeInUpCard {
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in-up-card {
+          animation: fadeInUpCard 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          opacity: 0;
+        }
+      `}</style>
       <div className="pr-3 pt-6 pb-4 shrink-0 flex items-center justify-between" style={{ paddingLeft: '32px', WebkitAppRegion: 'drag' } as any}>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
@@ -151,11 +153,11 @@ export default function SettingsPage() {
           <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin opacity-50"></div>
         </div>
       ) : (
-        <div className="flex-1 px-3 pb-6 overflow-hidden flex flex-col animate-in fade-in duration-200">
+        <div className="flex-1 px-3 pb-6 overflow-hidden flex flex-col">
           <div className="grid grid-cols-2 gap-4 flex-1 min-h-0 h-full" style={{ gridTemplateRows: '124px 124px 124px minmax(0, 1fr)' }}>
 
             {/* Row 1, Col 1: Auto Launch */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '0ms' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full animate-fade-in-up-card">
               <div>
                 <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>🚀 开机自动启动</h2>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>系统启动时自动后台运行，保持调度引擎在线</p>
@@ -170,7 +172,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Row 1, Col 2: Theme */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 shadow-sm h-full flex flex-col justify-center">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '50ms' }} className="border rounded-xl p-6 shadow-sm h-full flex flex-col justify-center animate-fade-in-up-card">
               <h2 className="text-lg font-bold mb-3" style={{ color: 'var(--text-primary)' }}>🎨 外观偏好</h2>
               <div className="flex gap-4">
                 <button
@@ -201,7 +203,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Row 2, Col 1: Headless Mode */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl px-6 py-4 flex flex-col justify-center shadow-sm h-full">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '100ms' }} className="border rounded-xl px-6 py-4 flex flex-col justify-center shadow-sm h-full animate-fade-in-up-card">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>🖥 无头模式</h2>
@@ -226,7 +228,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Row 2, Col 2: Hardware Acceleration */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '150ms' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full animate-fade-in-up-card">
               <div>
                 <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>⚡ 硬件加速</h2>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>使用 GPU 硬件加速渲染，若界面卡顿或崩溃请关闭此项</p>
@@ -241,7 +243,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Row 3: Global Path */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full overflow-hidden">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '200ms' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full overflow-hidden animate-fade-in-up-card">
               <div className="min-w-0 flex-1 mr-4">
                 <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>📂 默认存储路径</h2>
                 <p className="text-sm mt-1 font-mono truncate" style={{ color: 'var(--text-muted)' }} title={argusIssuePath}>当前: {argusIssuePath}</p>
@@ -258,7 +260,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Row 3 (or 4): Reset App Data */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '250ms' }} className="border rounded-xl p-6 flex items-center justify-between shadow-sm h-full animate-fade-in-up-card">
               <div>
                 <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>🗑 重置应用数据</h2>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>清除所有任务配置与通知模板</p>
@@ -273,15 +275,18 @@ export default function SettingsPage() {
             </div>
 
             {/* Last Row: About */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex flex-col shadow-sm h-full min-h-0 relative">
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-2xl font-black tracking-wider" style={{ color: 'var(--text-primary)' }}>Argus</h2>
-                <div className="group relative flex items-center">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border tracking-wide cursor-default ${licenseInfo?.isPro
-                      ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-                      : 'bg-gray-500/20 text-gray-400 border-gray-600/30'
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '300ms' }} className="border rounded-xl p-6 flex flex-col shadow-sm h-full min-h-0 relative animate-fade-in-up-card">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-3xl tracking-normal drop-shadow-sm leading-none" style={{ color: 'var(--text-primary)', fontFamily: '"Pacifico", cursive' }}>Argus</h2>
+                <div className="group relative flex items-center translate-y-[2px]">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border tracking-wide cursor-default ${
+                    licenseInfo?.isTrial
+                      ? 'bg-red-500/10 text-red-500 border-red-500/30 border-dashed'
+                      : licenseInfo?.isPro
+                        ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                        : 'bg-gray-500/20 text-gray-400 border-gray-600/30'
                     }`}>
-                    {licenseInfo?.isPro ? 'PRO' : 'FREE'}
+                    {licenseInfo?.isTrial ? (licenseInfo.trialType === 'MONAT' ? 'MONAT' : 'TRIAL') : licenseInfo?.isPro ? 'PRO' : 'FREE'}
                   </span>
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10">
                     <div
@@ -297,7 +302,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>可视化跨端RPA工具</p>
+              <p className="text-sm font-medium mb-4 translate-y-[3px]" style={{ color: 'var(--text-secondary)' }}>可视化跨端 RPA 工具</p>
               <img src="./logo.png" onError={(e) => e.currentTarget.style.display = 'none'} className="absolute top-6 right-6 w-16 h-16 object-contain opacity-80" style={{ imageRendering: 'high-quality' as any, transform: 'translateZ(0)' }} alt="Logo" />
               <div className="mt-auto mb-3 flex justify-between items-end text-[12px] font-mono opacity-50" style={{ color: 'var(--text-muted)' }}>
                 <span>It works. Go have a coffee.</span>
@@ -312,7 +317,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Last Row: Changelog */}
-            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)' }} className="border rounded-xl p-6 flex flex-col shadow-sm h-full min-h-0">
+            <div style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border)', animationDelay: '350ms' }} className="border rounded-xl p-6 flex flex-col shadow-sm h-full min-h-0 animate-fade-in-up-card">
               <div className="flex justify-between items-center mb-4 shrink-0">
                 <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                   <FileText size={18} style={{ color: 'var(--text-secondary)' }} />

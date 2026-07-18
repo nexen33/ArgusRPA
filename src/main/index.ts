@@ -3,11 +3,14 @@ import { join } from 'path'
 import * as fs from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-// [SECURITY & LICENSING NOTICE - v1.6.5] 
-// Core modules (browserManager, ExecutionEngine, Scheduler, secureStore, uiaManager) 
-// have been physically isolated from this open-source release to protect 
-// the proprietary anti-bot algorithms, task execution strategies, and the new
-// V8 bytecode encryption (bytenode) & license verification layers.
+// [SECURITY & LICENSING NOTICE - v2.0.0] 
+// Core modules have been physically isolated from this open-source release to protect 
+// the proprietary algorithms. 
+// Redacted components include:
+// - browserManager & Web ExecutionEngine
+// - DesktopAutomationRunner (.NET 10 / C# UIAutomation engine)
+// - Zod Data Gateway (src/main/schema)
+// - secureStore & V8 bytecode encryption (bytenode) layers.
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -73,31 +76,35 @@ app.whenReady().then(() => {
   
   safeHandle('get-all-tasks', () => {
     console.log('[Argus Engine] get-all-tasks requested (Stub mode)')
-    return [] // Return empty list for UI
+    return []
   })
   
   safeHandle('run-task', () => {
-    console.warn('[Argus Engine SECURITY] Execution engine is physically isolated in this build.')
+    console.warn('[Argus Web Engine SECURITY] Execution engine is physically isolated.')
+    return null
+  })
+
+  // [NEW in v1.8+] Desktop Engine Stubs
+  safeHandle('run-desktop-task', () => {
+    console.warn('[Argus Desktop Engine SECURITY] The .NET 10 C# Runner has been redacted.')
     return null
   })
 
   safeHandle('get-system-apps', () => {
     return [
-      { name: 'Notepad', executablePath: 'notepad.exe', processName: 'notepad' },
-      { name: 'Calculator', executablePath: 'calc.exe', processName: 'calculator' }
+      { name: 'Notepad', executablePath: 'notepad.exe', processName: 'notepad' }
     ]
   })
   
-  // [NEW in v1.6.5] Stub for Network Interception Rule Configuration
-  safeHandle('save-network-interception-rules', () => {
-    console.warn('[Argus Engine SECURITY] Network interception core is redacted.')
+  // [NEW in v2.0] Bot Integration Stubs
+  safeHandle('init-bot-websocket', () => {
+    console.warn('[Argus Bot Subsystem] Feishu/Slack WS connection logic redacted.')
     return { success: true }
   })
   
-  // [NEW in v1.5.0] Stub for License Verification
   safeHandle('verify-license', () => {
     console.warn('[Argus License Module] Running in Open-Source UI Mode.')
-    return { success: true, licenseType: 'OPEN_SOURCE' }
+    return { success: true, licenseType: 'OPEN_SOURCE_TRIAL_STUB' }
   })
 
   safeHandle('get-theme', () => {
@@ -110,9 +117,6 @@ app.whenReady().then(() => {
 
   // Initialize UI Framework
   createWindow()
-
-  // [REDACTED] Cron Scheduler, OpenCV Image Matcher, Network Interceptor, 
-  // Bytenode Compiler, and Feishu/Slack Notifier initialization omitted
 })
 
 app.on('window-all-closed', () => {

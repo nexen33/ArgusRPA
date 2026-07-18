@@ -129,7 +129,7 @@ export default function DomActionEditor({ currentStep, updateCurrentStep, render
                   <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      checked={currentStep.validationConfig?.enabled !== false}
+                      checked={!!currentStep.validationConfig?.enabled}
                       onChange={e => {
                         const current = currentStep.validationConfig || {};
                         updateCurrentStep({ validationConfig: { ...current, enabled: e.target.checked } });
@@ -169,7 +169,7 @@ export default function DomActionEditor({ currentStep, updateCurrentStep, render
             <label className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={currentStep.validationConfig?.enabled !== false}
+                checked={!!currentStep.validationConfig?.enabled}
                 onChange={e => {
                   const current = currentStep.validationConfig || {};
                   updateCurrentStep({ validationConfig: { ...current, enabled: e.target.checked } });

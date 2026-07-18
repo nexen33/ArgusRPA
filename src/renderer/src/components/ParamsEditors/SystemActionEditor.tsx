@@ -436,6 +436,35 @@ export default function SystemActionEditor({ currentStep, updateCurrentStep, ren
           </div>
         </div>
       )}
+
+      {currentStep.type === 'assignVariable' && (
+        <div className="flex flex-col gap-3 p-3 mt-1 bg-gray-800/50 rounded-lg border border-gray-700">
+          <div className="flex flex-col gap-1.5">
+            {renderVarLabel(
+              "自定义文本内容", 
+              "value", 
+              "assign-var-value"
+            )}
+            <textarea
+              id="assign-var-value"
+              className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full font-mono min-h-[80px]"
+              value={currentStep.value || ''}
+              onChange={e => updateCurrentStep({ value: e.target.value })}
+              placeholder="输入需要保存的文本内容，支持 {{变量}} 占位符"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5 mt-1">
+            <label className="text-[12px] text-gray-500 dark:text-[#b1b8c0] font-medium">保存至变量名</label>
+            <input
+              type="text"
+              className="bg-gray-900 text-xs text-gray-300 px-2.5 py-1.5 rounded-lg outline-none border border-gray-700 focus:border-primary w-full"
+              value={currentStep.outputVariable || ''}
+              onChange={e => updateCurrentStep({ outputVariable: e.target.value })}
+              placeholder="例如: my_custom_text"
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }

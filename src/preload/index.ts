@@ -16,11 +16,29 @@ const api = {
   switchBrowserTab: (tabId: string) => ipcRenderer.send('switch-browser-tab', tabId),
   closeBrowserTab: (tabId: string) => ipcRenderer.send('close-browser-tab', tabId),
   captureActiveView: () => ipcRenderer.invoke('capture-active-view'),
+  startDesktopInspect: () => ipcRenderer.invoke('start-desktop-inspect'),
+  startElevatedDesktopInspect: () => ipcRenderer.invoke('start-elevated-desktop-inspect'),
+  captureTemplateInteractive: () => ipcRenderer.invoke('capture-template-interactive'),
+  getDesktopScreenshotShortcut: () => ipcRenderer.invoke('get-desktop-screenshot-shortcut'),
+  setDesktopScreenshotShortcut: (shortcut: string) => ipcRenderer.invoke('set-desktop-screenshot-shortcut', shortcut),
+  getSystemApps: () => ipcRenderer.invoke('get-system-apps'),
   
   // Window Controls
   windowMinimize: () => ipcRenderer.send('window-minimize'),
+  windowRestore: () => ipcRenderer.send('window-restore'),
   windowMaximize: () => ipcRenderer.send('window-maximize'),
   windowClose: (quit?: boolean) => ipcRenderer.send('window-close', quit),
+  resizeDesktopWidget: (height: number) => ipcRenderer.send('resize-desktop-widget', height),
+  onWindowHidden: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('window-hidden', handler)
+    return () => ipcRenderer.removeListener('window-hidden', handler)
+  },
+  onWindowRestored: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('window-restored', handler)
+    return () => ipcRenderer.removeListener('window-restored', handler)
+  },
   
   // Session & Login APIs
   checkSession: (url: string, cookieName: string) => ipcRenderer.invoke('check-session', { url, cookieName }),
@@ -41,6 +59,8 @@ const api = {
   forceClearActiveTask: (taskId: string) => ipcRenderer.invoke('force-clear-active-task', taskId),
   stepContinue: () => ipcRenderer.invoke('step-continue'),
   testSingleStep: (step: any, taskId?: string) => ipcRenderer.invoke('test-single-step', step, taskId),
+  sniffNetwork: (url: string) => ipcRenderer.invoke('sniff-network', url),
+  cancelSniffNetwork: () => ipcRenderer.invoke('cancel-sniff-network'),
 
   // Notifications (Global)
   getNotificationConfig: () => ipcRenderer.invoke('get-notification-config'),
@@ -52,8 +72,11 @@ const api = {
   },
   saveNotificationConfig: (config: any) => ipcRenderer.invoke('save-notification-config', config),
   testSlackConnection: () => ipcRenderer.invoke('test-slack-connection'),
-  testFeishuConnection: () => ipcRenderer.invoke('test-feishu-connection'),
-
+  testFeishuConnection: (webhook: string, secret: string, keywords: string) => ipcRenderer.invoke('test-feishu-connection', webhook, secret, keywords),
+  testLarkBotConnection: (appId: string, appSecret: string) => ipcRenderer.invoke('test-lark-bot-connection', appId, appSecret),
+  generateBotScript: (args: {appId: string, appSecret: string, platformType: 'feishu' | 'lark'}) => ipcRenderer.invoke('generate-bot-script', args),
+  getActivePort: () => ipcRenderer.invoke('get-active-port'),
+  
   // Notifications (Advanced Phase 7)
   getAllNotificationConfigs: () => ipcRenderer.invoke('get-all-notification-configs'),
   saveAdvancedNotificationConfig: (config: any) => ipcRenderer.invoke('save-advanced-notification-config', config),
@@ -180,6 +203,11 @@ const api = {
     const handler = (_event: any, err: string) => callback(err)
     ipcRenderer.on('global-error', handler)
     return () => ipcRenderer.removeListener('global-error', handler)
+  },
+  onTasksUpdated: (callback: () => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('tasks-updated', handler)
+    return () => ipcRenderer.removeListener('tasks-updated', handler)
   }
 }
 

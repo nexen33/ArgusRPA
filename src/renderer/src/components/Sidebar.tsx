@@ -3,17 +3,18 @@ import { LayoutDashboard, ListTodo, Activity, Settings, Plus, Bell } from 'lucid
 import { useTask } from '../context/TaskContext'
 
 interface SidebarProps {
-  activePage: 'configurator' | 'tasks' | 'notifications' | 'monitor' | 'settings';
-  onNavigate: (page: 'configurator' | 'tasks' | 'notifications' | 'monitor' | 'settings') => void;
+  activePage: 'create_gateway' | 'configurator' | 'configurator_desktop' | 'tasks' | 'notifications' | 'monitor' | 'settings';
+  onNavigate: (page: 'create_gateway' | 'configurator' | 'configurator_desktop' | 'tasks' | 'notifications' | 'monitor' | 'settings') => void;
 }
 
 export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
   const { resetTask } = useTask()
   const [logoError, setLogoError] = React.useState(false)
+  const [logoLoaded, setLogoLoaded] = React.useState(false)
 
   const handleNewTask = () => {
     resetTask()
-    onNavigate('configurator')
+    onNavigate('create_gateway')
   }
 
   return (
@@ -21,7 +22,22 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
       {logoError ? (
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center font-bold text-lg shadow-lg text-white">A</div>
       ) : (
-        <img src="./logo.png" onError={() => setLogoError(true)} className="w-10 h-10 rounded-xl shadow-lg object-contain bg-white/5 p-1" style={{ imageRendering: 'high-quality' as any, transform: 'translateZ(0)' }} alt="Logo" />
+        <div className="w-10 h-10 flex items-center justify-center relative">
+          {/* Logo with fade-in and glow effect */}
+          <img 
+            src="./logo.png" 
+            draggable={false}
+            onLoad={() => setLogoLoaded(true)}
+            onError={() => setLogoError(true)} 
+            className={`w-9 h-9 object-contain drop-shadow-md select-none pointer-events-none transition-all duration-1000 ease-out ${
+              logoLoaded 
+                ? 'opacity-100 blur-0 scale-100 drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] brightness-110' 
+                : 'opacity-0 blur-sm scale-75'
+            }`} 
+            style={{ imageRendering: 'high-quality' as any }} 
+            alt="Logo" 
+          />
+        </div>
       )}
       
       <div className="flex flex-col gap-6 text-gray-400 w-full px-2">
@@ -34,8 +50,8 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         </button>
 
         <button 
-          onClick={() => onNavigate('configurator')}
-          className={`p-2 w-full flex justify-center rounded-lg transition-colors ${activePage === 'configurator' ? 'text-primary bg-gray-800' : 'hover:text-gray-200 hover:bg-gray-800/50'}`}
+          onClick={() => onNavigate('current_configurator' as any)}
+          className={`p-2 w-full flex justify-center rounded-lg transition-colors ${['configurator', 'configurator_desktop', 'create_gateway'].includes(activePage) ? 'text-primary bg-gray-800' : 'hover:text-gray-200 hover:bg-gray-800/50'}`}
           title="任务配置器"
         >
           <LayoutDashboard size={24} />

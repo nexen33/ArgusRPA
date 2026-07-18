@@ -1,7 +1,3 @@
-:root {
-  /* Default to dark if no class is present, though we will toggle .theme-dark / .theme-light */
-}
-
 /* Global transitions to prevent flickering */
 body * {
   transition-property: background-color, border-color, color, fill, stroke;
@@ -59,4 +55,13 @@ body * {
   --warning-subtle: rgba(217, 119, 6, 0.1);
   --success: #059669; /* emerald-600 */
   --success-subtle: rgba(5, 150, 105, 0.1);
+}
+
+.theme-desktop {
+  --accent: #9c65db; /* softer purple for dark mode */
+  --accent-subtle: rgba(156, 101, 219, 0.1);
+}
+.theme-desktop.theme-light {
+  --accent: #8b46d2; /* softer purple for light mode */
+  --accent-subtle: rgba(139, 70, 210, 0.1);
 }

@@ -51,6 +51,10 @@ export default function TaskConfigurator() {
         });
       }
     }
+    sessionStorage.setItem('argus-task-list-tab', 'web');
+    if (task.taskType !== 'web') {
+      updateTask({ taskType: 'web' });
+    }
   }, []);
 
   React.useEffect(() => {

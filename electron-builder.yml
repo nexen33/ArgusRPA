@@ -18,6 +18,9 @@ files:
   - "build/logo.icns"
   - "CHANGELOG.md"
 
+asarUnpack:
+  - out/main/uia/**/*.exe
+
 win:
   target:
     - target: nsis
@@ -28,9 +31,11 @@ nsis:
   shortcutName: "Argus"
   oneClick: false
   allowToChangeInstallationDirectory: true
-  deleteAppDataOnUninstall: true
+  deleteAppDataOnUninstall: false
   installerIcon: build/logo.ico
   uninstallerIcon: build/logo.ico
+  installerSidebar: build/NSIS_24bit.bmp
+  uninstallerSidebar: build/NSIS_24bit.bmp
   include: build/installer.nsh
   license: build/license.txt
 

@@ -14,10 +14,10 @@ export default function FlowActionEditor({ currentStep, updateCurrentStep, avail
       case 'waitForSelector': return '等待出现'
       case 'waitTimer': return '固定等待'
       case 'downloadFile': return '下载文件'
-      case 'navigate': return '访问网页 (全局)'
-      case 'calculate': return '变量运算 (全局)'
+      case 'navigate': return '访问网页'
+      case 'calculate': return '变量运算'
       case 'screenshot': return '网页截图'
-      case 'skipPopup': return '跳过弹窗 (全局)'
+      case 'skipPopup': return '跳过弹窗'
       case 'condition': return '条件判断网关'
       case 'mouseMove': return '移动到该元素处'
       case 'if_else': return '条件分支'
@@ -25,10 +25,10 @@ export default function FlowActionEditor({ currentStep, updateCurrentStep, avail
       case 'waitForText': return '文本轮询等待'
       case 'scrollToElement': return '滚动到元素可视区'
       case 'scrollPage': return '全局页面滚动'
-      case 'readLocalFile': return '读取本地文件 (全局)'
-      case 'fileAction': return '本地文件操作 (全局)'
-      case 'runPython': return '运行 .py 脚本 (全局)'
-      case 'goto': return '跳转到步骤 (局部循环)'
+      case 'readLocalFile': return '读取本地文件'
+      case 'fileAction': return '本地文件操作'
+      case 'runPython': return '运行 .py 脚本'
+      case 'goto': return '跳转到步骤'
       default: return type
     }
   }

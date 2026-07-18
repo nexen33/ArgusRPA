@@ -12,8 +12,8 @@ export default function RunStatusBar() {
   const [variables, setVariables] = useState<Record<string, string>>({})
   const [currentStepId, setCurrentStepId] = useState<string | null>(null)
   const [skippedCount, setSkippedCount] = useState<number>(0)
-  
-  const [downloadProgress, setDownloadProgress] = useState<{percent: number, received: number, total: number, state: string} | null>(null)
+
+  const [downloadProgress, setDownloadProgress] = useState<{ percent: number, received: number, total: number, state: string } | null>(null)
 
   useEffect(() => {
     // Check if currently active
@@ -70,7 +70,7 @@ export default function RunStatusBar() {
       if (!data.taskId || data.taskId === task.id) {
         // If we received progress, it means the step has started executing, so optimistic update UI out of 'paused'
         setStatus(prev => prev === 'paused' ? 'running' : prev)
-        
+
         if (data.state === 'completed' || data.percent >= 100) {
           setDownloadProgress(null)
         } else {
@@ -89,7 +89,7 @@ export default function RunStatusBar() {
       if (!data || !data.taskId || data.taskId === task.id) {
         setStatus('complete')
         if (data.variables) setVariables(data.variables)
-        
+
         let totalSkipped = 0;
         if (data.batchResults) {
           totalSkipped = data.batchResults.reduce((acc: number, r: any) => acc + (r.skippedSteps ? r.skippedSteps.length : 0), 0)
@@ -128,7 +128,7 @@ export default function RunStatusBar() {
       unsubDownloadProgress && unsubDownloadProgress()
     }
 
-  }, [])
+  }, [task?.id])
 
   const handleRun = async () => {
     if (!task.name || task.name.trim() === '') {
@@ -170,7 +170,7 @@ export default function RunStatusBar() {
 
   if (status === 'idle') {
     return (
-      <div 
+      <div
         className="border rounded-xl p-3 flex items-center justify-between shadow-lg shrink-0"
         style={{ backgroundColor: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
       >
@@ -183,10 +183,15 @@ export default function RunStatusBar() {
             <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>点击右侧按钮开始全自动执行此爬虫任务</span>
           </div>
         </div>
-        <button 
+        <button
           onClick={handleRun}
-          className="px-6 py-1.5 rounded-lg font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all flex items-center gap-2"
-          style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+          className="px-6 py-1.5 rounded-lg font-bold text-sm shadow-[0_0_15px_var(--accent-glow)] hover:shadow-[0_0_20px_var(--accent-glow-strong)] transition-all flex items-center gap-2 border-none"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: '#fff',
+            '--accent-glow': 'color-mix(in srgb, var(--accent) 40%, transparent)',
+            '--accent-glow-strong': 'color-mix(in srgb, var(--accent) 60%, transparent)'
+          } as any}
         >
           <Play size={16} className="fill-white" />
           开始运行
@@ -216,7 +221,7 @@ export default function RunStatusBar() {
   }
 
   return (
-    <div 
+    <div
       className="border rounded-xl p-3 flex items-center justify-between shadow-lg shrink-0 transition-colors"
       style={{ backgroundColor: getStatusBg(), borderColor: getStatusBg() }}
     >
@@ -228,17 +233,17 @@ export default function RunStatusBar() {
           {status === 'complete' && skippedCount > 0 && <AlertCircle size={24} style={{ color: getStatusColor() }} />}
           {status === 'error' && <AlertCircle size={24} style={{ color: getStatusColor() }} />}
         </div>
-        
+
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold" style={{ color: getStatusColor() }}>
               {status === 'running' ? '任务正在全自动执行中...' :
-               status === 'paused' ? '引擎已暂停 (等待调试)' :
-               status === 'complete' ? (skippedCount > 0 ? `任务未全部执行，有 ${skippedCount} 个步骤失败/超时` : '任务执行完毕') :
-               '任务执行异常中断'}
+                status === 'paused' ? '引擎已暂停 (等待调试)' :
+                  status === 'complete' ? (skippedCount > 0 ? `任务未全部执行，有 ${skippedCount} 个步骤失败/超时` : '任务执行完毕') :
+                    '任务执行异常中断'}
             </span>
             {currentStepId && status !== 'complete' && status !== 'error' && (
-              <span 
+              <span
                 className="text-[10px] px-2 py-0.5 rounded border font-medium"
                 style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderColor: 'var(--border)' }}
               >
@@ -246,7 +251,7 @@ export default function RunStatusBar() {
                   if (!task.steps) return 0;
                   let idx = task.steps.findIndex(s => s.id === currentStepId);
                   if (idx === -1) {
-                    idx = task.steps.findIndex(s => 
+                    idx = task.steps.findIndex(s =>
                       s.type === 'if_else' && (
                         (s.trueBranchSteps || []).some(c => c.id === currentStepId) ||
                         (s.falseBranchSteps || []).some(c => c.id === currentStepId)
@@ -258,11 +263,11 @@ export default function RunStatusBar() {
               </span>
             )}
           </div>
-          
+
           <div className="text-[11px] max-w-xl truncate" style={{ color: 'var(--text-secondary)' }}>
-            {status === 'error' ? errorMsg : 
-             status === 'complete' ? `成功收集到 ${Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length} 个变量。` :
-             '已捕获变量: ' + (Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length > 0 ? JSON.stringify(Object.fromEntries(Object.entries(variables).filter(([k]) => !k.startsWith('_SYS_')))) : '无')}
+            {status === 'error' ? errorMsg :
+              status === 'complete' ? `成功收集到 ${Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length} 个变量。` :
+                '已捕获变量: ' + (Object.keys(variables).filter(k => !k.startsWith('_SYS_')).length > 0 ? JSON.stringify(Object.fromEntries(Object.entries(variables).filter(([k]) => !k.startsWith('_SYS_')))) : '无')}
           </div>
         </div>
       </div>
@@ -276,15 +281,15 @@ export default function RunStatusBar() {
               正在下载 {downloadProgress.percent}% ({(downloadProgress.received / 1024 / 1024).toFixed(1)}M / {downloadProgress.total ? (downloadProgress.total / 1024 / 1024).toFixed(1) + 'M' : '未知'})
             </span>
             <div className="w-full rounded-full h-1.5 overflow-hidden" style={{ backgroundColor: 'var(--bg-elevated)' }}>
-              <div 
-                className="h-1.5 transition-all duration-300 ease-out" 
+              <div
+                className="h-1.5 transition-all duration-300 ease-out"
                 style={{ width: `${downloadProgress.percent}%`, backgroundColor: getStatusColor() }}
               />
             </div>
           </div>
         )}
         {status !== 'complete' && status !== 'error' && (
-          <button 
+          <button
             onClick={handleStop}
             className="border px-4 py-1.5 rounded-lg font-bold text-sm transition-all flex items-center gap-1"
             style={{ backgroundColor: 'var(--danger-subtle)', borderColor: 'var(--danger)', color: 'var(--danger)' }}
@@ -293,9 +298,9 @@ export default function RunStatusBar() {
             中止执行
           </button>
         )}
-        
+
         {(status === 'complete' || status === 'error') && (
-          <button 
+          <button
             onClick={() => {
               setStatus('idle');
               window.dispatchEvent(new CustomEvent('task-idle'));

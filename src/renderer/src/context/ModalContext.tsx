@@ -33,6 +33,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     }
   }, [isOpen])
 
+
+
   const openModal = (opts: string | ModalOptions, modalType: 'alert' | 'confirm') => {
     return new Promise<any>((resolve) => {
       if (typeof opts === 'string') {
@@ -79,6 +81,9 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         } else if (toastMsg.includes('警告') || toastMsg.includes('注意')) {
           icon = '⚠️'
           colorClass = 'text-yellow-500'
+        } else if (toastMsg.startsWith('请')) {
+          icon = '❗️'
+          colorClass = 'text-blue-400'
         }
 
         return (

@@ -23,7 +23,9 @@ export default function WindowControls() {
     if (result === true) {
       (window as any).electronAPI.windowClose(true)
     } else if (result === false) {
-      (window as any).electronAPI.windowClose(false)
+      setTimeout(() => {
+        (window as any).electronAPI.windowClose(false)
+      }, 150)
     }
   }
 

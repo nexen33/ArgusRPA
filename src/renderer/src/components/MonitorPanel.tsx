@@ -265,7 +265,16 @@ export default function MonitorPanel() {
         vars = task.monitorSelectedVarsChart
       } else {
         task.steps?.forEach(s => {
-          if ((s.type === 'readText' || s.type === 'readAttr' || s.type === 'calculate') && s.outputVariable) vars.push(s.outputVariable)
+          if ((s.type === 'readText' || s.type === 'readAttr' || s.type === 'calculate') && s.outputVariable) {
+            vars.push(s.outputVariable)
+          }
+          if (s.type === 'network_request_variable' && s.networkRequestConfig?.capsules) {
+            s.networkRequestConfig.capsules.forEach((c: any) => {
+              if (c.variableName && c.variableName.trim() !== '') {
+                vars.push(c.variableName)
+              }
+            })
+          }
         })
       }
       const uniqueVars = Array.from(new Set(vars))

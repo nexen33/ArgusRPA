@@ -4,10 +4,10 @@ import { useModal } from '../context/ModalContext'
 import { Lock, Clock, Layers, Link as LinkIcon, Bell, LineChart, ChevronLeft, Save, Import, ArrowRight, ArrowRightLeft, AlertTriangle, ArrowDownLeft, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react'
 import { parseChromeRecorderJSON } from '../utils/chromeRecorderParser'
 import BatchParamEditor from './BatchParamEditor'
-import { DomActionEditor, SystemActionEditor, FlowActionEditor } from './ParamsEditors'
+import { DomActionEditor, SystemActionEditor, FlowActionEditor, NetworkRequestEditor } from './ParamsEditors'
 import { SmartXPathSelector } from './ParamsEditors/DomActionEditor'
 
-const GLOBAL_TYPES = ['waitTimer', 'navigate', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython', 'goto']
+const GLOBAL_TYPES = ['waitTimer', 'navigate', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython', 'goto', 'assignVariable', 'network_request_variable']
 
 
 export default function ParamsPanel() {
@@ -115,8 +115,17 @@ export default function ParamsPanel() {
       }
     }
 
+    if (pendingStep.type === 'network_request_variable') {
+      const config = pendingStep.networkRequestConfig;
+      if (config && config.capsules && config.capsules.some((c: any) => !c.variableName || c.variableName.trim() === '')) {
+        modal.toast('添加失败: 变量名不能为空')
+        return
+      }
+    }
+
     if (!activeDropzone) {
       if (pendingStep.insertAfterId) {
+        let found = false;
         const insertRecursive = (steps: any[]): any[] => {
           const newSteps: any[] = [];
           for (const s of steps) {
@@ -124,6 +133,7 @@ export default function ParamsPanel() {
             if (s.id === pendingStep.insertAfterId) {
               const { insertAfterId, ...stepToInsert } = pendingStep;
               newSteps.push(stepToInsert);
+              found = true;
             }
             if (s.type === 'if_else') {
               s.trueBranchSteps = s.trueBranchSteps ? insertRecursive(s.trueBranchSteps) : [];
@@ -132,7 +142,12 @@ export default function ParamsPanel() {
           }
           return newSteps;
         };
-        updateTask({ steps: insertRecursive(task.steps || []) });
+        const newSteps = insertRecursive(task.steps || []);
+        if (!found) {
+          const { insertAfterId, ...stepToInsert } = pendingStep;
+          newSteps.push(stepToInsert);
+        }
+        updateTask({ steps: newSteps });
       } else {
         updateTask({ steps: [...(task.steps || []), pendingStep] })
       }
@@ -303,10 +318,10 @@ export default function ParamsPanel() {
       case 'waitForSelector': return '等待出现'
       case 'waitTimer': return '固定等待'
       case 'downloadFile': return '下载文件'
-      case 'navigate': return '访问网页 (全局)'
-      case 'calculate': return '变量运算 (全局)'
+      case 'navigate': return '访问网页'
+      case 'calculate': return '变量运算'
       case 'screenshot': return '网页截图'
-      case 'skipPopup': return '跳过弹窗 (全局)'
+      case 'skipPopup': return '跳过弹窗'
       case 'condition': return '条件判断网关'
       case 'mouseMove': return '移动到该元素处'
       case 'if_else': return '条件分支'
@@ -314,10 +329,12 @@ export default function ParamsPanel() {
       case 'waitForText': return '文本轮询等待'
       case 'scrollToElement': return '滚动到元素可视区'
       case 'scrollPage': return '全局页面滚动'
-      case 'readLocalFile': return '读取本地文件 (全局)'
-      case 'fileAction': return '本地文件操作 (全局)'
-      case 'runPython': return '运行 .py 脚本 (全局)'
-      case 'goto': return '跳转到步骤 (局部循环)'
+      case 'readLocalFile': return '读取本地文件'
+      case 'fileAction': return '本地文件操作'
+      case 'runPython': return '运行 .py 脚本'
+      case 'goto': return '跳转到步骤'
+      case 'assignVariable': return '文本植入'
+      case 'network_request_variable': return '网络请求变量'
       default: return type
     }
   }
@@ -350,12 +367,12 @@ export default function ParamsPanel() {
   return (
     <div className="h-full flex flex-col p-0 bg-darkPanel">
       {/* 步骤配置区域 */}
-      <div className="flex-none flex flex-col gap-1.5 pb-2">
+      <div className={`flex flex-col gap-1.5 ${currentStep?.type === 'network_request_variable' ? (isPending ? 'h-[calc(100%-46px)] pb-0 min-h-0' : 'h-full pb-0 min-h-0') : 'pb-2 flex-none'}`}>
         {currentStep ? (
           <>
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-lg text-gray-200">
-                {isPending ? '✨ 元素捕获卡片' : `参数配置 - ${getTypeLabel(currentStep.type)}`}
+                {isPending ? '✨ 操作配置卡片' : `参数配置 - ${getTypeLabel(currentStep.type)}`}
               </h2>
               {isPending ? (
                 <span className="px-3 py-1 text-[12px] font-bold text-amber-500 border border-amber-600/80 rounded-md bg-amber-500/10">
@@ -390,7 +407,7 @@ export default function ParamsPanel() {
             {/* 元素基本信息预览 */}
             {(currentStep.tagName || currentStep.innerText) && (
               <div className="flex gap-2 w-full">
-                <div className={`bg-gray-900/60 p-2.5 rounded-lg border border-gray-700 shadow-inner min-w-0 ${['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython'].includes(currentStep.type) ? 'flex-1' : 'flex-[3]'}`}>
+                <div className={`bg-gray-900/60 p-2.5 rounded-lg border border-gray-700 shadow-inner min-w-0 ${['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython', 'assignVariable'].includes(currentStep.type) ? 'flex-1' : 'flex-[3]'}`}>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold uppercase shrink-0">
                       {currentStep.tagName}
@@ -400,7 +417,7 @@ export default function ParamsPanel() {
                     </span>
                   </div>
                 </div>
-                {!['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython'].includes(currentStep.type) && (
+                {!['delay', 'waitTimer', 'if_else', 'loop', 'end_loop', 'runTask', 'navigate', 'goto', 'condition', 'calculate', 'skipPopup', 'scrollPage', 'readLocalFile', 'fileAction', 'runPython', 'assignVariable'].includes(currentStep.type) && (
                   <div className="flex-[2] min-w-0">
                     <input
                       type="text"
@@ -452,7 +469,9 @@ export default function ParamsPanel() {
                                                           currentStep.type === 'readLocalFile' ? '📂' :
                                                             currentStep.type === 'fileAction' ? '🛠️' :
                                                               currentStep.type === 'runPython' ? '🐍' :
-                                                                currentStep.type === 'goto' ? '🔄' : ''}
+                                                                currentStep.type === 'goto' ? '🔄' : 
+                                                                  currentStep.type === 'assignVariable' ? '📝' : 
+                                                                    currentStep.type === 'network_request_variable' ? '📡' : ''}
                     </span>
                     <span>
                       {currentStep.type === 'click' ? '点击此元素' :
@@ -469,14 +488,16 @@ export default function ParamsPanel() {
                                             currentStep.type === 'waitForText' ? '文本轮询等待' :
                                               currentStep.type === 'scrollToElement' ? '滚动至可视区' :
                                                 currentStep.type === 'scrollPage' ? '全局页面滚动' :
-                                                  currentStep.type === 'waitTimer' ? '固定时长等待 (全局)' :
-                                                    currentStep.type === 'navigate' ? '访问网页 (全局)' :
-                                                      currentStep.type === 'calculate' ? '变量数学运算 (全局)' :
-                                                        currentStep.type === 'skipPopup' ? '智能跳过弹窗 (全局)' :
-                                                          currentStep.type === 'readLocalFile' ? '读取本地结构化文件 (全局)' :
-                                                            currentStep.type === 'fileAction' ? '本地文件系统操作 (全局)' :
-                                                              currentStep.type === 'runPython' ? '运行 .py 脚本 (全局)' :
-                                                                currentStep.type === 'goto' ? '跳转到步骤 (局部循环)' : currentStep.type}
+                                                  currentStep.type === 'waitTimer' ? '固定时长等待' :
+                                                    currentStep.type === 'navigate' ? '访问网页' :
+                                                      currentStep.type === 'calculate' ? '变量数学运算' :
+                                                        currentStep.type === 'skipPopup' ? '智能跳过弹窗' :
+                                                          currentStep.type === 'readLocalFile' ? '读取本地结构化文件' :
+                                                            currentStep.type === 'fileAction' ? '本地文件系统操作' :
+                                                              currentStep.type === 'runPython' ? '运行 .py 脚本' :
+                                                                currentStep.type === 'goto' ? '跳转到步骤' : 
+                                                                  currentStep.type === 'assignVariable' ? '文本变量植入' : 
+                                                                    currentStep.type === 'network_request_variable' ? '网络请求变量' : currentStep.type}
                     </span>
                   </div>
                   <span className="text-gray-400 text-[10px]">▼</span>
@@ -525,15 +546,17 @@ export default function ParamsPanel() {
                     <div className="flex flex-col gap-0.5">
                       <div className="text-xs text-gray-500 dark:text-gray-300 px-2 py-1 mb-1 border-b border-gray-700/50">全局操作</div>
                       {[
-                        { value: 'waitTimer', icon: '⏱️', label: '固定时长等待 (全局)' },
-                        { value: 'scrollPage', icon: '📜', label: '全局页面滚动 (全局)' },
-                        { value: 'navigate', icon: '🌐', label: '访问网页 (全局)' },
-                        { value: 'calculate', icon: '🧮', label: '变量数学运算 (全局)' },
-                        { value: 'skipPopup', icon: '🚫', label: '智能跳过弹窗 (全局)' },
-                        { value: 'readLocalFile', icon: '📂', label: '读取结构化文件 (全局)' },
-                        { value: 'fileAction', icon: '🛠️', label: '文件系统操作 (全局)' },
-                        { value: 'runPython', icon: '🐍', label: '运行 .py 脚本 (全局)' },
-                        { value: 'goto', icon: '🔄', label: '跳转到步骤 (局部循环)' }
+                        { value: 'waitTimer', icon: '⏱️', label: '固定时长等待' },
+                        { value: 'scrollPage', icon: '📜', label: '全局页面滚动' },
+                        { value: 'navigate', icon: '🌐', label: '访问网页' },
+                        { value: 'calculate', icon: '🧮', label: '变量数学运算' },
+                        { value: 'skipPopup', icon: '🚫', label: '智能跳过弹窗' },
+                        { value: 'readLocalFile', icon: '📂', label: '读取结构化文件' },
+                        { value: 'fileAction', icon: '🛠️', label: '文件系统操作' },
+                        { value: 'runPython', icon: '🐍', label: '运行 .py 脚本' },
+                        { value: 'network_request_variable', icon: '📡', label: '网络请求变量' },
+                        { value: 'goto', icon: '🔄', label: '跳转到步骤' },
+                        { value: 'assignVariable', icon: '📝', label: '文本变量植入' }
                       ].map(opt => (
                         <button
                           key={opt.value}
@@ -638,6 +661,7 @@ export default function ParamsPanel() {
             <DomActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} renderVarLabel={renderVarLabel} />
             <SystemActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} availableVars={availableVars} renderVarLabel={renderVarLabel} />
             <FlowActionEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} availableVars={availableVars} renderVarLabel={renderVarLabel} task={task} />
+            <NetworkRequestEditor currentStep={currentStep} updateCurrentStep={updateCurrentStep} renderVarLabel={renderVarLabel} />
 
             {/* 点击操作高级设置 for downloadFile */}
             {currentStep.type === 'downloadFile' && (
@@ -720,11 +744,11 @@ export default function ParamsPanel() {
               </div>
             )}
 
-            {isPending && (
+            {isPending && currentStep?.type !== 'network_request_variable' && (
               <div className="grid grid-cols-2 gap-3 mt-1">
                 <button
                   onClick={cancelPendingStep}
-                  className="py-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:border-gray-500 hover:text-white text-[13px] font-bold transition-all shadow-sm"
+                  className="py-2 rounded-lg text-[13px] font-bold transition-all duration-300 border shadow-sm bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:text-red-400"
                 >
                   取消
                 </button>
@@ -832,7 +856,7 @@ export default function ParamsPanel() {
       </div>
 
       {/* 分割线与全局配置标题 */}
-      {!activeConfigCard && (
+      {!activeConfigCard && currentStep?.type !== 'network_request_variable' && (
         <div className="flex items-center mb-1 shrink-0">
           <div className="flex-1 h-px" style={{ backgroundColor: 'var(--border)' }}></div>
           <h3 className="font-bold text-[12px] px-3 tracking-wider shrink-0" style={{ color: 'var(--text-muted)' }}>
@@ -844,7 +868,7 @@ export default function ParamsPanel() {
 
       {/* 下半区：全局配置与批量参数 */}
       <div className="flex-1 overflow-y-auto flex flex-col pt-1">
-        {!activeConfigCard ? (
+        {!activeConfigCard && currentStep?.type !== 'network_request_variable' ? (
           <>
             <div className="grid grid-cols-2 gap-2">
               {configCards.map(c => (
@@ -879,7 +903,7 @@ export default function ParamsPanel() {
               ))}
             </div>
           </>
-        ) : (
+        ) : activeConfigCard && currentStep?.type !== 'network_request_variable' ? (
           <div className="flex flex-col h-full animate-in slide-in-from-right-4 fade-in duration-300 relative">
             <div className="flex justify-between items-center mt-1 mb-2 shrink-0 relative">
               <button
@@ -1095,24 +1119,36 @@ export default function ParamsPanel() {
                   <div className="flex flex-col gap-1.5 mt-2">
                     <label className="text-[12px] font-medium" style={{ color: 'var(--text-secondary)' }}>选择要记录的输出变量</label>
                     <div className="bg-gray-800/40 rounded border border-gray-700 p-2 flex flex-col gap-1.5 max-h-[150px] overflow-y-auto thin-scrollbar">
-                      {task.steps?.filter(s => s.outputVariable).length === 0 ? (
-                        <div className="text-[11px] text-gray-500 text-center py-2">暂无可用变量，请在步骤中配置输出变量</div>
-                      ) : (
-                        task.steps?.filter(s => s.outputVariable).map(s => {
-                          const varName = s.outputVariable!;
+                      {(() => {
+                        const allVars: string[] = [];
+                        task.steps?.forEach(s => {
+                          if (s.outputVariable) allVars.push(s.outputVariable);
+                          if (s.networkRequestConfig?.capsules) {
+                            s.networkRequestConfig.capsules.forEach((c: any) => {
+                              if (c.variableName && c.variableName.trim() !== '') {
+                                allVars.push(c.variableName);
+                              }
+                            });
+                          }
+                        });
+                        const uniqueVars = Array.from(new Set(allVars));
+
+                        if (uniqueVars.length === 0) {
+                          return <div className="text-[11px] text-gray-500 text-center py-2">暂无可用变量，请在步骤中配置输出变量</div>;
+                        }
+
+                        return uniqueVars.map(varName => {
                           const isNormal = task.monitorMode === 'normal' || !task.monitorMode;
 
                           // Smart auto-check initialization logic
                           let currentSelected = isNormal ? task.monitorSelectedVarsNormal : task.monitorSelectedVarsChart;
                           if (currentSelected === undefined) {
                             if (isNormal) {
-                              // Normal defaults to all
-                              currentSelected = task.steps?.filter(st => st.outputVariable).map(st => st.outputVariable!) || [];
+                              currentSelected = uniqueVars;
                               setTimeout(() => updateTask({ monitorSelectedVarsNormal: currentSelected }), 0);
                             } else {
-                              // Chart defaults to heuristic match (zh, en, de)
                               const heuristicRegex = /price|num|rate|cost|amount|count|percent|money|数值|额|率|量|verbrauch|preis|anzahl|kosten|menge/i;
-                              currentSelected = task.steps?.filter(st => st.outputVariable && heuristicRegex.test(st.outputVariable)).map(st => st.outputVariable!) || [];
+                              currentSelected = uniqueVars.filter(v => heuristicRegex.test(v));
                               setTimeout(() => updateTask({ monitorSelectedVarsChart: currentSelected }), 0);
                             }
                           }
@@ -1120,7 +1156,7 @@ export default function ParamsPanel() {
                           const isChecked = currentSelected?.includes(varName);
 
                           return (
-                            <label key={s.id} className="flex items-center gap-2 cursor-pointer group">
+                            <label key={varName} className="flex items-center gap-2 cursor-pointer group">
                               <input
                                 type="checkbox"
                                 className="hidden"
@@ -1144,8 +1180,8 @@ export default function ParamsPanel() {
                               <span className="text-[12px] text-gray-300 font-mono flex-1 truncate group-hover:text-white transition-colors">{varName}</span>
                             </label>
                           );
-                        })
-                      )}
+                        });
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1167,8 +1203,26 @@ export default function ParamsPanel() {
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
+
+      {/* 专用底部确认区域 for network_request_variable */}
+      {isPending && currentStep?.type === 'network_request_variable' && (
+        <div className="grid grid-cols-2 gap-3 pt-2 shrink-0 border-t border-gray-700/50 mt-0">
+          <button
+            onClick={cancelPendingStep}
+            className="py-2 rounded-lg text-[13px] font-bold transition-all duration-300 border shadow-sm bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border)] hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500 dark:hover:text-red-400"
+          >
+            取消
+          </button>
+          <button
+            onClick={confirmPendingStep}
+            className="py-2 rounded-lg bg-blue-600 text-white border border-blue-500 hover:bg-blue-500 hover:border-blue-400 shadow-[0_0_12px_rgba(37,99,235,0.4)] hover:shadow-[0_0_16px_rgba(59,130,246,0.6)] text-[13px] font-bold transition-all"
+          >
+            添加为步骤
+          </button>
+        </div>
+      )}
     </div>
   )
 }

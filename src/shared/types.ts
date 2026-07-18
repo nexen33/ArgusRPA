@@ -2,8 +2,9 @@ export interface ScraperTask {
   id: string;                        // nanoid 生成
   name: string;
   targetUrl: string;                 // 支持 {{paramName}} 占位符
+  taskType?: 'web' | 'desktop';      // 区分网页自动化和桌面自动化任务
   isLoginRequired?: boolean;
-  loginPageUrl: string;
+  loginPageUrl?: string;
   loginSuccessUrlPrefix?: string;
   loginSuccessSelectorCheck?: string;
   sessionCookieName: string;
@@ -52,7 +53,7 @@ export interface MonitorRecord {
 export interface NotificationConfig {
   id: string;
   name: string;
-  platform: ('feishuLark' | 'slack' | 'local')[]; // 支持多选，合并飞书和Lark，以及本机通知
+  platform: ('feishuLark' | 'slack' | 'local' | 'websocket')[]; // 支持多选，合并飞书和Lark，以及本机通知
   feishuWebhookUrl?: string;
   slackWebhookUrl?: string;
   signingSecret?: string;
@@ -61,11 +62,12 @@ export interface NotificationConfig {
   batchMode: 'each' | 'summary'; // 批量任务时的发送模式
   summaryTemplate?: string; // batchMode=summary 时使用的汇总模板
   localTemplate?: string;   // 本机通知使用的独立精简模板
+  feishuChatId?: string;    // 新增：Websocket 对应的接收者ID
 }
 
 export interface ScraperStep {
   id: string;
-  type: 'click' | 'input' | 'readText' | 'readAttr' | 'waitForSelector' | 'waitTimer' | 'downloadFile' | 'navigate' | 'condition' | 'calculate' | 'screenshot' | 'skipPopup' | 'if_else' | 'mouseMove' | 'pressKey' | 'waitForText' | 'scrollToElement' | 'scrollPage' | 'readLocalFile' | 'fileAction' | 'runPython' | 'goto';
+  type: 'click' | 'input' | 'readText' | 'readAttr' | 'waitForSelector' | 'waitTimer' | 'downloadFile' | 'navigate' | 'condition' | 'calculate' | 'screenshot' | 'skipPopup' | 'if_else' | 'mouseMove' | 'pressKey' | 'waitForText' | 'scrollToElement' | 'scrollPage' | 'readLocalFile' | 'fileAction' | 'runPython' | 'goto' | 'startApp' | 'closeApp' | 'focusWindow' | 'launchApp' | 'windowControl' | 'systemSearch' | 'sendWin32Message' | 'imageMatch' | 'dragAndDrop' | 'readClipboard' | 'assignVariable' | 'network_request_variable';
   selector: string;
   selectorXPath?: string;
   value?: string;
@@ -111,14 +113,146 @@ export interface ScraperStep {
   textRegex?: string;
   gotoStepId?: string;
   waitForTimeoutSeconds?: number;
-  clickMode?: 'cdp' | 'dom';
+  clickMode?: 'cdp' | 'dom' | 'rightClick' | 'doubleClick';
   expectedText?: string;
   autoExecuteAfterAdd?: boolean;
   validationConfig?: { enabled: boolean; expectedUrlPattern?: string; recordedMethod?: string; };
+  
+  // Phase 30 fields
+  appPath?: string;
+  appArgs?: string;
+  processName?: string;
+  
+  // Phase 31.2 fields
+  executablePath?: string;
+  executableArgs?: string;
+  waitForWindow?: boolean;
+  windowTitle?: string;
+  windowCommand?: 'close' | 'minimize' | 'maximize' | 'restore' | 'focus' | 'minimize_others_restore' | '';
+  windowX?: number;
+  windowY?: number;
+  windowWidth?: number;
+  windowHeight?: number;
+  windowPosition?: 'fullscreen' | 'left_half' | 'right_half' | 'top_left' | 'top_right' | 'bottom_left' | 'bottom_right' | 'custom' | '';
+  searchKeyword?: string;
+  pressEnter?: boolean;
+  win32Message?: number;
+  win32WParam?: number;
+  win32LParam?: number;
+  templateBase64?: string;
+  templatePreviewUrl?: string;
+  confidenceThreshold?: number;
+  actionAfterMatch?: 'click' | 'doubleClick' | 'rightClick' | 'hover';
+  waitTimeout?: number;
+  
+  // Phase 38.0 fields
+  dragOffsetX?: number;
+  dragOffsetY?: number;
+  dragSpeed?: 'fast' | 'normal' | 'slow';
+  
+  // Phase 41.0 fields
+  networkRequestConfig?: {
+    urlKeyword: string;
+    sniffTargetUrl?: string;
+    capsules: { value: string; url: string; jsonPath: string; hintName: string; variableName: string }[];
+  };
 }
 
 export interface BatchParamConfig {
   enabled: boolean;
   paramName: string;
   paramValues: { name: string; value: string }[];
+}
+
+import { z } from 'zod';
+
+export const NodeFingerprintSchema = z.object({
+  controlType: z.string().nullable().optional(),
+  className: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  automationId: z.string().nullable().optional(),
+});
+
+export const BoundingRectSchema = z.object({
+  x: z.number().nullable().optional(),
+  y: z.number().nullable().optional(),
+  width: z.number().nullable().optional(),
+  height: z.number().nullable().optional(),
+});
+
+export const InspectInfoSchema = z.object({
+  className: z.string().nullable().optional(),
+  controlType: z.string().nullable().optional(),
+  processName: z.string().nullable().optional(),
+  boundingRect: BoundingRectSchema.nullable().optional(),
+  fallbackRequired: z.boolean().nullable().optional(),
+  selector: z.string().nullable().optional(),
+  ancestorFingerprints: z.array(NodeFingerprintSchema).nullable().optional(),
+});
+
+export const InspectActionSchema = z.object({
+  id: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+});
+
+export const CommandResultSchema = z.object({
+  success: z.boolean(),
+  method: z.string().nullable().optional(),
+  processId: z.number().nullable().optional(),
+  inputMethod: z.string().nullable().optional(),
+  value: z.string().nullable().optional(),
+  exists: z.boolean().nullable().optional(),
+  base64: z.string().nullable().optional(),
+  found: z.boolean().nullable().optional(),
+  x: z.number().nullable().optional(),
+  y: z.number().nullable().optional(),
+  width: z.number().nullable().optional(),
+  height: z.number().nullable().optional(),
+  confidence: z.number().nullable().optional(),
+  stepType: z.string().nullable().optional(),
+  templateBase64: z.string().nullable().optional(),
+  confidenceThreshold: z.number().nullable().optional(),
+  actionAfterMatch: z.string().nullable().optional(),
+  actionType: z.string().nullable().optional(),
+  dragOffsetX: z.number().nullable().optional(),
+  dragOffsetY: z.number().nullable().optional(),
+  className: z.string().nullable().optional(),
+  elementName: z.string().nullable().optional(),
+  automationId: z.string().nullable().optional(),
+  controlType: z.string().nullable().optional(),
+  processName: z.string().nullable().optional(),
+  selector: z.string().nullable().optional(),
+  fallbackRequired: z.boolean().nullable().optional(),
+  boundingRect: BoundingRectSchema.nullable().optional(),
+  ancestorDepth: z.number().nullable().optional(),
+  childIndexPath: z.array(z.number()).nullable().optional(),
+  inspectInfo: InspectInfoSchema.nullable().optional(),
+  actions: z.array(InspectActionSchema).nullable().optional(),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+});
+
+export type CommandResultType = z.infer<typeof CommandResultSchema>;
+
+export const ResponsePacketSchema = z.object({
+  success: z.boolean(),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  data: CommandResultSchema.nullable().optional()
+});
+
+export interface DesktopLogMessage {
+  timestamp: string;
+  runId?: string;
+  taskId?: string;
+  taskName?: string;
+  step?: number;
+  action?: string;
+  durationMs?: number;
+  status: 'success' | 'error' | 'info' | 'warn';
+  error?: string;
+  message?: string;
+  variablesSnapshot?: Record<string, any>;
+  currentUrl?: string;
+  stepsBefore?: string[];
 }
