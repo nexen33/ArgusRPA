@@ -30,7 +30,11 @@ Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pr
 > 授权密钥与您的机器码绑定。付款时请务必在订单备注中留下您的 **[机器码]**。您会在 24 小时内通过提供的可用渠道收到您的专属密钥。  
 > License keys are bound to your hardware ID. Please leave your **[Hardware ID]** in the checkout notes. Keys will be delivered manually via Direct Message / Email within 24 hours.
 
-Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取工具。项目采用完全本地化的架构设计，无需编写复杂脚本即可实现自动化的工作流调度。
+---
+
+## 项目简介
+
+**Argus** 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取工具。项目采用完全本地化的架构设计，无需编写复杂脚本即可实现自动化的工作流调度。
 
 ### 架构说明
 
