@@ -1,4 +1,17 @@
+<div align="right">
+  <strong>简体中文</strong> | <a href="./README_EN.md">English</a>
+</div>
+
 <h1 align="center">Argus RPA</h1>
+
+<p align="center">
+  <a href="https://github.com/nexen33/ArgusRPA/releases"><img src="https://img.shields.io/badge/Version-v2.0.5-blue" alt="Version" /></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-green" alt="Platform" />
+  <img src="https://img.shields.io/badge/Electron-v30-teal" alt="Electron" />
+  <img src="https://img.shields.io/badge/React-v18-cyan" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-v5.4-blue" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/License-7--Day%20Trial%20%7C%20Pro-orange" alt="License" />
+</p>
 
 ---
 
@@ -21,47 +34,6 @@ Loving the 7-day trial? Support the solo dev and grab a key to keep using the Pr
 > 授权密钥与您的机器码绑定。付款时请务必在订单备注中留下您的 **[机器码]**。您会在 24 小时内通过提供的可用渠道收到您的专属密钥。
 
 ---
-
-*[🇨🇳 简体中文 (Simplified Chinese) 请向下滚动浏览]*
-
----
-
-Argus is a lightweight, visually-driven Robotic Process Automation (RPA) tool and web scraper. Designed with a local-first architecture, it enables automated data extraction and workflow execution without requiring complex scripting. 
-
-### 🛠️ Architecture Notice
-The UI rendering layer is built with **React 18 + TailwindCSS + Vite**, while the core relies on **Electron** for cross-platform orchestration.<br>
-*(Note: To protect core intellectual property, this repository exclusively open-sources the UI architecture and IPC communication skeleton. All underlying proprietary logic—including the dual Web/Desktop execution engines, anti-fingerprint sandbox, and smart routing algorithms—has been physically isolated. To experience the full capabilities, please use the provided binaries.)*
-
-### ✨ Core Features
-- **Comprehensive Web Automation(Core):** A highly mature web automation foundation supporting an extensive array of interaction primitives (e.g., condition branching, local file operations, element actions). Capable of bypassing DOM restrictions via "Network Variable Requests" to fetch API data directly, coupled with dynamic UUID/Token runtime replacement and smart network request interception.
-- **Native Desktop Automation (Supplementary - Windows Beta):** Powered by a zero-dependency local execution runner. Employs a highly reliable dual-picking mechanism combining intelligent image recognition with native UI Automation, providing robust interactions with desktop applications. *(Note: macOS desktop support is currently in development).*
-- **Deep Enterprise IM Integration:** Features a robust WebSocket-based bot communication layer seamlessly integrated with Feishu (including Lark) and Slack. Supports one-click alert script generation, self-healing state management, concurrent alerting pipelines, and dynamic Markdown templating.
-- **High-Performance Task Isolation & Gateway:** Powered by a dynamic local API port allocator and robust data validation gateway. Employs high-speed local disk exchange for tasks and true process reuse via a singleton daemon to completely eliminate bottlenecks during mass concurrency.
-- **Visual Element Picker with Fallback:** Built-in isolated browser environment supporting dynamic element inspection. Equipped with independent dual-shortcut picking and a unified smart penetration algorithm offering automatic fallback mechanisms, ensuring absolute stability during runtime UI shifts.
-- **Node-based Workflow Engine:** Supports sequenced automation logic including pre-click content validation. Greatly reduces manual configuration through one-click import capabilities for Chrome DevTools Recorder files.
-- **Smart Popup Evasion:** Implements heuristic element-scoring and keyword matching to automatically bypass intrusive post-navigation popups.
-- **Built-in Offline OCR:** Local image-to-text recognition for circumventing canvas-based or non-standard text rendering without relying on cloud APIs.
-- **Visual Runtime Monitoring:** Generates real-time, task-specific concurrency charts with straightforward data export options (.csv / .txt).
-- **Cron Scheduling:** Background task polling with isolated partition cookies for concurrent multi-account execution.
-- **Local Data Privacy & Enterprise Security:** 100% local data persistence with OS-level encrypted storage for sensitive credentials, zero cloud sync, coupled with rigorous anti-tampering protection and strict license verification.
-
-### 🚀 Installation 
-**⚠️ Trial Policy Notice:** To ensure sustainable development and maintain infrastructure, all downloads are provided as a fully unlocked **7-Day Trial Version**. Once the trial period expires, the application will automatically transition into the **Pro Version** state, at which point an authorization key will be required to continue executing workflows. (You can buy an license key from the support buttons at the beginning)
-
-Pre-built binaries for macOS and Windows are available in the [Releases](https://github.com/nexen33/ArgusRPA/releases) page.
-- **macOS:** Download `Argus_Trial_Setup_2.0.0_x64.dmg` & `Argus_Trial_Setup_2.0.0_arm64.dmg`. 
-- **Windows:** Download `Argus_Trial_Setup_2.0.0.exe`.
-
-> 🔧 **macOS Troubleshooting:** If you encounter an "App is damaged and can't be opened" error, it is due to macOS Gatekeeper's quarantine restrictions on downloaded apps. To resolve this, open your `Terminal`, paste `sudo xattr -cr /Applications/Argus.app`, and hit Enter (you may need to input your Mac login password).
-
-### ⚠️ Disclaimer
-Argus is provided "as-is" for educational and personal workflow automation purposes only. The user assumes all responsibility for adhering to the Terms of Service and `robots.txt` policies of the target websites. The author holds no liability for any misuse, account suspension, or legal disputes arising from the use of this software.
-
----
-
-# 🇨🇳 简体中文介绍
-
-<h1 align="center">Argus RPA</h1>
 
 Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取工具。项目采用完全本地化的架构设计，无需编写复杂脚本即可实现自动化的工作流调度。
 
@@ -86,8 +58,8 @@ Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取
 **⚠️ 试用政策说明：** 为了维持本项目的长久研发与底层运维，当前提供的所有安装包均为全功能解锁的 **7 天 Trial 试用版**。当试用期结束后，软件会自动平滑过渡至 **Pro 专业版** 锁定状态，届时将需要持有有效的授权密钥方可继续执行您的自动化流转任务。感谢您对独立开发者的理解。（授权密钥可以从开头的支持链接处获取）
 
 请前往 [Releases](https://github.com/nexen33/ArgusRPA/releases) 页面获取编译好的安装包：
-- **macOS:** 下载 `Argus_Trial_Setup_2.0.0_x64.dmg` 或 `Argus_Trial_Setup_2.0.0_arm64.dmg`。
-- **Windows:** 下载 `Argus_Trial_Setup_2.0.0.exe`。
+- **macOS:** 下载 `Argus_Trial_Setup_2.0.5_x64.dmg` 或 `Argus_Trial_Setup_2.0.5_arm64.dmg`。
+- **Windows:** 下载 `Argus_Trial_Setup_2.0.5.exe`。
 
 > 🔧 **macOS 运行提示：** 若安装后打开时提示“App 已损坏，无法打开”，这是由于 macOS Gatekeeper 的安全隔离机制所致。请打开系统的 `终端 (Terminal)`，粘贴命令 `sudo xattr -cr /Applications/Argus.app` 并回车，输入开机密码后即可正常使用。
 
@@ -104,7 +76,6 @@ Argus 是一款轻量级、视觉驱动的 桌面级 RPA 与 网页数据 提取
 <p align="center">
   <img width="7550" height="2250" alt="Image" src="https://github.com/user-attachments/assets/af46f871-6df4-4b43-b1b4-863f9b6dce31" />
 </p>
-
 
 <p align="center">
   <em>Viel Spaß damit!</em><br />
